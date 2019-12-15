@@ -4,9 +4,7 @@ module FoundationDBUtil
     ) where
 
 import Data.Text (Text, unpack, pack)
-import qualified Data.Text.IO as T
 import Data.Text.Encoding (decodeUtf8)
-import qualified Data.ByteString as B
 import qualified System.Process as P
 import qualified FoundationDB as FDB
 

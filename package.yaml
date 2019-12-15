@@ -24,23 +24,16 @@ default-extensions:
 
 library:
   source-dirs: src
+  ghc-options: -Wall
 
 executables:
   foundationdb-explorer:
     main: Main.hs
     source-dirs: app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -Wall
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
     dependencies:
     - foundationdb-explorer
   data-loader:
     main: Main.hs
     source-dirs: data-loader
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -Wall
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
