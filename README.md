@@ -1,1 +1,0 @@
-# declarative-haskell-gui

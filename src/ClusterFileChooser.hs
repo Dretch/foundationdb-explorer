@@ -1,4 +1,4 @@
-module Splash
+module ClusterFileChooser
     ( State(..)
     , Event
     , app
@@ -16,7 +16,7 @@ data State = State { filePath :: Maybe Text }
 data Event = FileSelectionChanged (Maybe FilePath) | Close | Finish
 
 view' :: State -> AppView Window Event
-view' State{filePath} =
+view' State{..} =
   bin Window [#title := "FoundationDB Explorer", on #deleteEvent (const (True, Close)), #widthRequest := 600]
     $ container Box [#orientation := OrientationVertical, #margin := 10, #spacing := 10]
         [ BoxChild
