@@ -6,7 +6,7 @@ module App
 
 import Control.Concurrent (threadDelay)
 import Data.Text (Text)
-import GI.Gtk (Label (..), Window (..))
+import GI.Gtk (Label (..), Notebook (..), Window (..))
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import Pipes.Prelude (repeatM)
@@ -15,15 +15,24 @@ import qualified ClusterFileChooser
 import Event (Event (..))
 import State (State (..))
 import FoundationDBUtil (getStatus)
+import Gi.Gtk.Declarative.Notebook (NotebookChild (..))
 
 view' :: State -> AppView Window Event
 view' state =
-    bin Window [#title := "FoundationDB Explorer", on #deleteEvent (const (True, Close)), #widthRequest := 500, #heightRequest := 500]
+    bin Window [#title := "FoundationDB Explorer", on #deleteEvent (const (True, Close)), #widthRequest := 500]
       $ case state of
           ChoosingClusterFile{..} ->
             ClusterFileChooser.view' selectedClusterFile
           ChosenClusterFile{..} ->
-            widget Label [#label := status, #margin := 10]
+            container Notebook []
+              [ NotebookChild
+                  "Status"
+                  (widget Label [#label := status, #margin := 10])
+              , NotebookChild
+                  "Data"
+                  (widget Label [#label := "data goes here..."])
+              ]
+            
 
 update' :: State -> Event -> Transition State Event
 update' state@(ChoosingClusterFile _) (ClusterFileSelectionChanged maybePath) =

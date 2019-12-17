@@ -13,8 +13,11 @@ dependencies:
 - process
 - sqlite-simple
 - text
+- vector
 
 default-extensions:
+- DeriveFunctor
+- MultiParamTypeClasses
 - NamedFieldPuns
 - OverloadedLabels
 - OverloadedLists
