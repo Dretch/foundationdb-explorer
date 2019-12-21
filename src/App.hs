@@ -6,7 +6,7 @@ module App
 
 import Control.Concurrent (threadDelay)
 import Data.Text (Text)
-import GI.Gtk (Label (..), Notebook (..), Window (..))
+import GI.Gtk (Label (..), Window (..))
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import Pipes.Prelude (repeatM)
@@ -15,7 +15,7 @@ import qualified ClusterFileChooser
 import Event (Event (..))
 import State (State (..))
 import FoundationDBUtil (getStatus)
-import Gi.Gtk.Declarative.Notebook (NotebookChild (..))
+import Gi.Gtk.Declarative.Notebook (notebook, page)
 
 view' :: State -> AppView Window Event
 view' state =
@@ -24,21 +24,17 @@ view' state =
           ChoosingClusterFile{..} ->
             ClusterFileChooser.view' selectedClusterFile
           ChosenClusterFile{..} ->
-            container Notebook []
-              [ NotebookChild
-                  "Status"
-                  (widget Label [#label := status, #margin := 10])
-              , NotebookChild
-                  "Data"
-                  (widget Label [#label := "data goes here..."])
+            notebook []
+              [ page "Status" (widget Label [#label := status, #margin := 10])
+              , page "Data" (widget Label [#label := "data goes here..."])
               ]
             
 
 update' :: State -> Event -> Transition State Event
-update' state@(ChoosingClusterFile _) (ClusterFileSelectionChanged maybePath) =
+update' state@ChoosingClusterFile{..} (ClusterFileSelectionChanged maybePath) =
     Transition state{selectedClusterFile = maybePath} (pure Nothing)
 
-update' (ChoosingClusterFile _) (ClusterFileChosen clusterFilePath) =
+update' ChoosingClusterFile{..} (ClusterFileChosen clusterFilePath) =
     Transition ChosenClusterFile{clusterFilePath, status = ""} (pure $ Just ReloadStatus)
 
 update' state@ChosenClusterFile{..} ReloadStatus =
