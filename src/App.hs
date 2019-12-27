@@ -36,9 +36,12 @@ update' state@State{..} ReloadStatus =
 update' state@State{..} (SetStatus status') =
     Transition state{status = status'} (pure Nothing)
 
-update' state@State{database} (StartSearch range) =
-    Transition state{search = (search state){searchResults = SearchInProgress}} $ do
-        res <- getSearchResult database range
+update' state@State{search} (SetSearchRange range) =
+    Transition state{search = search{searchRange = range}} (pure Nothing)
+
+update' state@State{database, search} StartSearch =
+    Transition state{search = search{searchResults = SearchInProgress}} $ do
+        res <- getSearchResult database (searchRange search)
         pure . Just . FinishSearch $ either (Left . pack . displayException) Right res
 
 update' state@State{} (FinishSearch results) =

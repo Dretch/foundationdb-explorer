@@ -7,19 +7,18 @@ import qualified Data.Vector as Vector
 import Data.Vector (Vector)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import GI.Gtk (Align (..), Box (..), Button (..), Entry (..), Label (..), ListBox (..), ListBoxRow (..), Orientation (..))
+import GI.Gtk (Align (..), Box (..), Button (..), Entry (..), Label (..), ListBox (..), ListBoxRow (..), Orientation (..), entryGetText)
 import GI.Gtk.Declarative
 
 import Event (Event (..))
-import qualified State -- todo: rm?
-import State (SearchResults (..))
+import State (Search (..), SearchRange (..), SearchResult (..), SearchResults (..))
 
-view' :: State.Search -> Widget Event
-view' State.Search{searchRange = searchRange@State.SearchRange{..}, ..} =
+view' :: Search -> Widget Event
+view' Search{searchRange = searchRange@SearchRange{..}, ..} =
     container Box [#orientation := OrientationVertical, #margin := 10, #spacing := 10]
-      ([ keySelector "From" searchFrom
-       , keySelector "To" searchTo
-       , boxChild (widget Button ([#label := "Fetch", #halign := AlignEnd, on #clicked (StartSearch searchRange), #sensitive := activateInputs]))
+      ([ keySelector "From" searchFrom (\t -> searchRange{searchFrom = t})
+       , keySelector "To" searchTo (\t-> searchRange{searchTo = t})
+       , boxChild (widget Button ([#label := "Fetch", #halign := AlignEnd, on #clicked StartSearch, #sensitive := activateInputs]))
        ] <> results)
     where
       results :: Vector (BoxChild Event)
@@ -33,16 +32,23 @@ view' State.Search{searchRange = searchRange@State.SearchRange{..}, ..} =
             defaultBoxChildProperties{expand = True, fill = True}
             (container ListBox [] (Vector.fromList $ Foldable.toList $ resultRow <$> rows))]
 
-      resultRow :: State.SearchResult -> Bin ListBoxRow Event
-      resultRow State.SearchResult{..} =
+      resultRow :: SearchResult -> Bin ListBoxRow Event
+      resultRow SearchResult{..} =
           bin ListBoxRow [] $ widget Label [#label := (trim resultKey <> " = " <> trim resultValue)]
 
-      keySelector :: Text -> Text -> BoxChild Event
-      keySelector label key =
+      keySelector :: Text -> Text -> (Text -> SearchRange) -> BoxChild Event
+      keySelector label key updateRange =
           boxChild (container Box [#spacing := 10] [boxChild labelWidget, boxChild textWidget])
           where
-              labelWidget = widget Label [#label := label]
-              textWidget = widget Entry [#text := key, #sensitive := activateInputs] -- todo: tooltip explaining \x## syntax
+              labelWidget =
+                widget Label [#label := label]
+
+              textWidget =
+                widget Entry [#text := key, onM #changed onChange, #sensitive := activateInputs] -- todo: tooltip explaining \x## syntax
+              
+              onChange entry = do
+                text <- entryGetText entry
+                pure $ SetSearchRange $ updateRange text
       
       activateInputs :: Bool
       activateInputs = searchResults /= SearchInProgress

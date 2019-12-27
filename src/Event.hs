@@ -2,11 +2,12 @@ module Event (Event (..)) where
 
 import Data.Sequence (Seq)
 import Data.Text (Text)
-import qualified State
+import State (SearchRange, SearchResult)
 
 data Event
     = ReloadStatus
     | SetStatus Text
-    | StartSearch State.SearchRange
-    | FinishSearch (Either Text (Seq State.SearchResult))
+    | SetSearchRange SearchRange
+    | StartSearch
+    | FinishSearch (Either Text (Seq SearchResult))
     | Close
