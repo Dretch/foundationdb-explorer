@@ -57,7 +57,7 @@ keyFromText key =
         Right bs -> bs
     where
         parser :: Parser ByteString
-        parser = B.concat <$> M.many (escapedByte <|> escapedSlash <|> regularChar)
+        parser = B.concat <$> M.many (M.try escapedByte <|> M.try escapedSlash <|> regularChar)
 
         escapedByte :: Parser ByteString
         escapedByte = do
