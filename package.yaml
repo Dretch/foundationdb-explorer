@@ -5,11 +5,13 @@ license:             BSD3
 dependencies:
 - base >= 4.7 && < 5
 - bytestring
+- containers
 - foundationdb-haskell
 - gi-glib
 - gi-gtk
 - gi-gtk-declarative
 - gi-gtk-declarative-app-simple
+- megaparsec
 - pipes
 - process
 - sqlite-simple

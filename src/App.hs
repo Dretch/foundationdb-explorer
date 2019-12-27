@@ -6,15 +6,17 @@ module App
 
 import Control.Concurrent (threadDelay)
 import Data.Text (Text)
-import GI.Gtk (Label (..), Window (..))
+import GI.Gtk (Align (..), Label (..), Window (..))
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import Pipes.Prelude (repeatM)
 
 import qualified ClusterFileChooser
+import qualified Search
 import Event (Event (..))
-import State (State (..))
-import FoundationDBUtil (getStatus)
+import qualified State
+import State (State (..), Search (..))
+import FoundationDBUtil (getStatus, getSearchResult)
 import Gi.Gtk.Declarative.Notebook (notebook, page)
 
 view' :: State -> AppView Window Event
@@ -25,8 +27,8 @@ view' state =
             ClusterFileChooser.view' selectedClusterFile
           ChosenClusterFile{..} ->
             notebook []
-              [ page "Status" (widget Label [#label := status, #margin := 10])
-              , page "Data" (widget Label [#label := "data goes here..."])
+              [ page "Search" (Search.view' search)
+              , page "Status" (widget Label [#label := status, #margin := 10, #halign := AlignStart, #valign := AlignStart])
               ]
             
 
@@ -35,14 +37,21 @@ update' state@ChoosingClusterFile{..} (ClusterFileSelectionChanged maybePath) =
     Transition state{selectedClusterFile = maybePath} (pure Nothing)
 
 update' ChoosingClusterFile{..} (ClusterFileChosen clusterFilePath) =
-    Transition ChosenClusterFile{clusterFilePath, status = ""} (pure $ Just ReloadStatus)
+    Transition (State.initialChosenClusterFileState clusterFilePath) (pure $ Just ReloadStatus)
 
 update' state@ChosenClusterFile{..} ReloadStatus =
     Transition state $ (Just . SetStatus) <$> getStatus clusterFilePath
 
 update' state@ChosenClusterFile{..} (SetStatus status') =
     Transition state{status = status'} (pure Nothing)
-    
+
+update' state@ChosenClusterFile{} (StartSearch range) =
+    Transition state{search = (search state){searchInProgress = True, searchResults = Nothing}} $
+        Just . FinishSearch <$> getSearchResult range
+
+update' state@ChosenClusterFile{} (FinishSearch results) =
+    Transition state{search = (search state){searchInProgress = False, searchResults = Just results}} (pure Nothing)
+
 update' _state Close =
     Exit
     
@@ -54,7 +63,7 @@ app defaultClusterFilePath = do
     App { view = view'
         , update = update'
         , inputs = [reloadStatusPeriodically]
-        , initialState = ChoosingClusterFile{selectedClusterFile = defaultClusterFilePath}
+        , initialState = State.initialState defaultClusterFilePath
         }
     where
         reloadStatusPeriodically = repeatM $ do
