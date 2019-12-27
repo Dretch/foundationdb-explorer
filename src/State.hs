@@ -2,22 +2,21 @@ module State
   ( State (..)
   , Search (..)
   , SearchRange (..)
+  , SearchResults (..)
   , SearchResult (..)
   , initialState
-  , initialChosenClusterFileState
   ) where
 
 import Data.Sequence (Seq)
 import Data.Text (Text)
+import FoundationDB (Database)
 
 data State
-    = ChoosingClusterFile{ selectedClusterFile :: Maybe Text }
-    | ChosenClusterFile{ clusterFilePath :: Text, status :: Text, search :: Search }
+    = State{ database :: Database, status :: Text, search :: Search }
 
 data Search = Search
     { searchRange :: SearchRange
-    , searchInProgress :: Bool
-    , searchResults :: Maybe (Seq SearchResult)
+    , searchResults :: SearchResults
     }
 
 data SearchRange = SearchRange
@@ -25,19 +24,21 @@ data SearchRange = SearchRange
     , searchTo :: Text
     }
 
+data SearchResults
+    = SearchNotStarted
+    | SearchInProgress
+    | SearchSuccess (Seq SearchResult)
+    | SearchFailure Text
+    deriving (Eq)
+
 data SearchResult = SearchResult
     { resultKey :: Text
     , resultValue :: Text
+    } deriving (Eq, Show)
+
+initialState :: Database -> State
+initialState database = State
+    { database
+    , status = ""
+    , search = Search { searchRange = SearchRange { searchFrom = "", searchTo = "\\xFF" }, searchResults = SearchNotStarted }
     }
-
-initialState :: Maybe Text -> State
-initialState selectedClusterFile =
-    ChoosingClusterFile{selectedClusterFile}
-
-initialChosenClusterFileState :: Text -> State
-initialChosenClusterFileState clusterFilePath =
-    ChosenClusterFile
-      { clusterFilePath
-      , status = ""
-      , search = Search { searchRange = SearchRange { searchFrom = "", searchTo = "\\xFF" }, searchInProgress = False, searchResults = Nothing }
-      }

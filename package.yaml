@@ -20,13 +20,14 @@ dependencies:
 
 default-extensions:
 - DeriveFunctor
+- LambdaCase
 - MultiParamTypeClasses
 - NamedFieldPuns
 - OverloadedLabels
 - OverloadedLists
 - OverloadedStrings
 - RecordWildCards
-- LambdaCase
+- ScopedTypeVariables
 
 library:
   source-dirs: src

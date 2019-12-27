@@ -5,10 +5,8 @@ import Data.Text (Text)
 import qualified State
 
 data Event
-    = ClusterFileSelectionChanged (Maybe Text)
-    | ClusterFileChosen Text
-    | ReloadStatus
+    = ReloadStatus
     | SetStatus Text
     | StartSearch State.SearchRange
-    | FinishSearch (Seq State.SearchResult)
+    | FinishSearch (Either Text (Seq State.SearchResult))
     | Close

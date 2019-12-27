@@ -4,6 +4,7 @@ module FoundationDBUtil
     , getSearchResult
     ) where
 
+import Control.Exception (try)
 import Control.Monad (void)
 import Data.Bits (shiftL, (.|.))
 import Data.ByteString (ByteString)
@@ -23,27 +24,29 @@ import Text.Megaparsec ((<|>))
 import qualified Text.Megaparsec.Char as MC
 import qualified Text.Printf as Printf
 import qualified System.Process as P
+import FoundationDB (Database, Error, Range (..))
 import qualified FoundationDB as FDB
 
 import State (SearchRange (..), SearchResult (..))
 
-getClusterFilePath :: IO (Maybe Text)
-getClusterFilePath = do
-    FDB.withFoundationDB FDB.defaultOptions $ \db -> do
-        FDB.runTransaction db $ do
-            maybePath <- FDB.get "\xFF\xFF/cluster_file_path" >>= FDB.await
-            pure $ fmap decodeUtf8 maybePath
+getClusterFilePath :: Database -> IO (Maybe Text)
+getClusterFilePath db = do
+    FDB.runTransaction db $ do
+        maybePath <- FDB.get "\xFF\xFF/cluster_file_path" >>= FDB.await
+        pure $ fmap decodeUtf8 maybePath
 
-getStatus :: Text -> IO Text
-getStatus clusterFilePath = do
-    T.pack <$> P.readProcess "fdbcli" ["-C", T.unpack clusterFilePath, "--exec", "status"] ""
+getStatus :: Database -> IO Text
+getStatus db = do
+    clusterFilePath <- getClusterFilePath db
+    let cArgs = fromMaybe [] ((\p -> ["-C", T.unpack p]) <$> clusterFilePath)
+    T.pack <$> P.readProcess "fdbcli" (cArgs <> ["--exec", "status"]) ""
 
-getSearchResult :: SearchRange -> IO (Seq SearchResult)
-getSearchResult SearchRange{..} = do -- todo: use selected cluster file!
-    FDB.withFoundationDB FDB.defaultOptions $ \db -> do
-        FDB.runTransaction db $ do
-            pairs <- FDB.getEntireRange $ FDB.keyRange (keyFromText searchFrom) (keyFromText searchTo)
-            pure $ (\(k, v) -> SearchResult{resultKey = keyToText k, resultValue = keyToText v}) <$> pairs
+getSearchResult :: Database -> SearchRange -> IO (Either Error (Seq SearchResult))
+getSearchResult db SearchRange{..} = do
+    try $ FDB.runTransaction db $ do
+        let range = FDB.keyRange (keyFromText searchFrom) (keyFromText searchTo)
+        pairs <- FDB.getEntireRange range{rangeLimit = Just 100} -- todo: make configurable
+        pure $ (\(k, v) -> SearchResult{resultKey = keyToText k, resultValue = keyToText v}) <$> pairs
 
 type Parser = M.Parsec Void Text
 
