@@ -38,13 +38,14 @@ view' Search{searchRange = searchRange@SearchRange{..}, ..} =
 
       keySelector :: Text -> Text -> (Text -> SearchRange) -> BoxChild Event
       keySelector label key updateRange =
-          boxChild (container Box [#spacing := 10] [boxChild labelWidget, boxChild textWidget])
+          boxChild (container Box [#spacing := 10] [labelWidget, textWidget])
           where
               labelWidget =
-                widget Label [#label := label]
+                boxChild $ widget Label [#label := label]
 
               textWidget =
-                widget Entry [#text := key, onM #changed onChange, #sensitive := activateInputs] -- todo: tooltip explaining \x## syntax
+                BoxChild defaultBoxChildProperties{expand = True, fill = True} $
+                  widget Entry [#text := key, onM #changed onChange, #sensitive := activateInputs] -- todo: tooltip explaining \x## syntax
               
               onChange entry = do
                 text <- entryGetText entry
