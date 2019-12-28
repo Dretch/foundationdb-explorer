@@ -63,6 +63,6 @@ instance IsContainer Gtk.Grid GridChild where
                                                                , topAttach
                                                                }} widget' =
     Gtk.gridAttach grid widget' leftAttach topAttach width height
-  replaceChild grid gridChild' i old new = do
+  replaceChild grid gridChild' _i old new = do
     Gtk.widgetDestroy old
     appendChild grid gridChild' new

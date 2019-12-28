@@ -7,6 +7,7 @@ dependencies:
 - bytestring
 - containers
 - data-default-class
+- errors
 - foundationdb-haskell
 - gi-glib
 - gi-gtk

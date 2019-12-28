@@ -4,16 +4,17 @@ module Search
 
 import Data.Int (Int32)
 import Data.Foldable as Foldable
+import Data.Maybe (fromMaybe)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
 import Data.Text (Text)
-import qualified Data.Text as Text
+import qualified Data.Text as T
 import GI.Gtk (Align (..), Button (..), Entry (..), Grid (..), Label (..), Orientation (..), ScrolledWindow (..), entryGetText)
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.Container.Grid
 
 import Event (Event (..))
-import State (Search (..), SearchRange (..), SearchResult (..), SearchResults (..))
+import State (Search (..), SearchRange (..), SearchResult (..), SearchResults (..), maxKeyTupleSize, maxValueTupleSize)
 
 view' :: Search -> Widget Event
 view' Search{searchRange = searchRange@SearchRange{..}, ..} =
@@ -53,25 +54,38 @@ view' Search{searchRange = searchRange@SearchRange{..}, ..} =
         SearchFailure msg ->
           widget Label [#label := ("Search failed: " <> msg)]
         SearchSuccess rows ->
+          let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
+              valueWidth = fromMaybe 1 $ maxValueTupleSize rows
+          in
           bin ScrolledWindow [#hexpand := True, #vexpand := True] $
-            container Grid [#hexpand := True, #columnSpacing := 4] $
-               Vector.concatMap resultRow $ Vector.fromList $ zip [0..] (Foldable.toList rows)
+            container Grid [#hexpand := True, #columnSpacing := 12, #margin := 4] $
+               Vector.concatMap (resultRow keyWidth valueWidth) $
+                 Vector.fromList $ zip [0..] (Foldable.toList rows)
 
-      resultRow :: (Int32, SearchResult) -> Vector (GridChild Event)
-      resultRow (rowN, SearchResult{..}) =
-        [ GridChild {
-            properties = defaultGridChildProperties{topAttach = rowN},
-            child = widget Label [#label := trim resultKey, #halign := AlignStart]
-          },
-          GridChild {
-            properties = defaultGridChildProperties{topAttach = rowN, leftAttach = 1},
-            child = widget Label [#label := "="]
-          },
-          GridChild {
-            properties = defaultGridChildProperties{topAttach = rowN, leftAttach = 2},
-            child = widget Label [#label := trim resultValue, #hexpand := True, #halign := AlignStart]
-          }
-        ]
+      resultRow :: Integer -> Integer -> (Int32, SearchResult) -> Vector (GridChild Event)
+      resultRow keyWidth valueWidth (rowN, SearchResult{..}) = keyCells <> [eqCell] <> valueCells
+        where
+          eqCell :: GridChild Event
+          eqCell = GridChild {
+              properties = defaultGridChildProperties{topAttach = rowN, leftAttach = fromIntegral keyWidth},
+              child = widget Label [#label := "<b>=</b>", #useMarkup := True]
+            }
+
+          keyCells :: Vector (GridChild Event)
+          keyCells = case resultKey of
+            (t, Nothing) -> [cell keyWidth 0 t]
+            (_, Just ts) -> Vector.fromList $ uncurry (cell 1) <$> zip [0..] ts
+          
+          valueCells :: Vector (GridChild Event)
+          valueCells = case resultValue of
+            (t, Nothing) -> [cell valueWidth (keyWidth + 1) t]
+            (_, Just ts) -> Vector.fromList $ uncurry (cell 1) <$> zip [keyWidth + 1 ..] ts
+          
+          cell :: Integer -> Integer -> Text -> GridChild Event
+          cell width leftAttach label = GridChild {
+              properties = defaultGridChildProperties{topAttach = rowN, leftAttach = fromIntegral leftAttach, width = fromIntegral width},
+              child = widget Label [#label := trim label, #halign := AlignStart]
+            }
 
       onChange :: (Text -> SearchRange) -> Entry -> IO Event
       onChange updateRange entry = do
@@ -82,6 +96,8 @@ view' Search{searchRange = searchRange@SearchRange{..}, ..} =
       activateInputs = searchResults /= SearchInProgress
 
 trim :: Text -> Text
-trim s
-   | Text.length s <= 100 = s
-   | otherwise            = Text.take 97 s <> "..."
+trim = T.replace "\n" " " . T.replace "\r" " " . trim'
+  where
+    trim' s
+      | T.length s <= 50 = s
+      | otherwise        = T.take 47 s <> "..."

@@ -4,6 +4,7 @@ module FoundationDBUtil
     , getSearchResult
     ) where
 
+import Control.Error.Util (hush)
 import Control.Exception (try)
 import Control.Monad (void)
 import Data.Bits (shiftL, (.|.))
@@ -25,6 +26,7 @@ import qualified Text.Megaparsec.Char as MC
 import qualified Text.Printf as Printf
 import qualified System.Process as P
 import FoundationDB (Database, Error, Range (..))
+import FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems)
 import qualified FoundationDB as FDB
 
 import State (SearchRange (..), SearchResult (..))
@@ -46,7 +48,10 @@ getSearchResult db SearchRange{..} = do
     try $ FDB.runTransaction db $ do
         let range = FDB.keyRange (keyFromText searchFrom) (keyFromText searchTo)
         pairs <- FDB.getEntireRange range{rangeLimit = Just 100} -- todo: make configurable
-        pure $ (\(k, v) -> SearchResult{resultKey = keyToText k, resultValue = keyToText v}) <$> pairs
+        pure $ (\(k, v) -> SearchResult{resultKey = decodeKey k, resultValue = decodeKey v}) <$> pairs
+
+decodeKey :: ByteString -> (Text, Maybe [Text])
+decodeKey b = (keyToText b, hush $ fmap elemToText <$> decodeTupleElems b)
 
 type Parser = M.Parsec Void Text
 
@@ -82,3 +87,17 @@ keyToText = T.concat . fmap mapChar . B.unpack
      | Char.isPrint (B.w2c w) = T.singleton $ B.w2c w
      | otherwise              = T.pack $ Printf.printf "\\x%02x" w
 
+-- todo: better!
+elemToText :: Elem -> Text
+elemToText = \case
+    None -> ""
+    Tuple _nested -> "nested..."
+    Bytes bs -> keyToText bs
+    Text t -> t
+    Int i -> T.pack $ show i
+    Float f -> T.pack $ show f
+    Double d -> T.pack $ show d
+    Bool b -> T.pack $ show b
+    UUID _a _b _c _d -> "UUID"
+    CompleteVS _vs -> "complete versionstamp"
+    IncompleteVS _vs -> "incomplete versionstamp"
