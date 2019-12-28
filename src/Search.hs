@@ -8,7 +8,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as Vector
 import Data.Text (Text)
 import qualified Data.Text as Text
-import GI.Gtk (Align (..), Button (..), Entry (..), Grid (..), Label (..), Orientation (..), entryGetText)
+import GI.Gtk (Align (..), Button (..), Entry (..), Grid (..), Label (..), Orientation (..), ScrolledWindow (..), entryGetText)
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.Container.Grid
 
@@ -53,8 +53,9 @@ view' Search{searchRange = searchRange@SearchRange{..}, ..} =
         SearchFailure msg ->
           widget Label [#label := ("Search failed: " <> msg)]
         SearchSuccess rows ->
-          container Grid [#hexpand := True, #columnSpacing := 4] $
-             (Vector.concatMap resultRow $ Vector.fromList $ zip [0..] (Foldable.toList rows))
+          bin ScrolledWindow [#hexpand := True, #vexpand := True] $
+            container Grid [#hexpand := True, #columnSpacing := 4] $
+               Vector.concatMap resultRow $ Vector.fromList $ zip [0..] (Foldable.toList rows)
 
       resultRow :: (Int32, SearchResult) -> Vector (GridChild Event)
       resultRow (rowN, SearchResult{..}) =
