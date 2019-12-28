@@ -19,7 +19,7 @@ import Event (Event (..))
 import qualified State
 import State (State (..), Search (..), SearchResults (..))
 import FoundationDBUtil (getStatus, getSearchResult)
-import Gi.Gtk.Declarative.Notebook (notebook, page)
+import GI.Gtk.Declarative.Container.Notebook (notebook, page)
 
 view' :: State -> AppView Window Event
 view' State{..} =

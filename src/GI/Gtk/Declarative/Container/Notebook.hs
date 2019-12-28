@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Gi.Gtk.Declarative.Notebook
+module GI.Gtk.Declarative.Container.Notebook
   ( Page
   , page
   , pageWithTab
