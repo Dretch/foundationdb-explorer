@@ -1,12 +1,11 @@
 module Main where
 
-import Control.Monad (void)
-import GI.Gtk.Declarative.App.Simple (run)
-import qualified FoundationDB as FDB
+import           Control.Monad                 (void)
+import qualified FoundationDB                  as FDB
+import           GI.Gtk.Declarative.App.Simple (run)
 
-import qualified App (app)
+import qualified App                           (app)
 
 main :: IO ()
 main = do
-    FDB.withFoundationDB FDB.defaultOptions $ \db -> do
-        void $ run $ App.app db
+  FDB.withFoundationDB FDB.defaultOptions $ void . run . App.app
