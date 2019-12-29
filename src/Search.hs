@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedLabels  #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -50,6 +51,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
             widget
               Entry
               [ #text := searchFrom
+              , #tooltipText := escapeSyntaxHelp
               , onM #changed $ onChange (\t -> searchRange {searchFrom = t})
               , #sensitive := activateInputs
               , #hexpand := True
@@ -66,6 +68,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
             widget
               Entry
               [ #text := searchTo
+              , #tooltipText := escapeSyntaxHelp
               , onM #changed $ onChange (\t -> searchRange {searchTo = t})
               , #sensitive := activateInputs
               , #hexpand := True
@@ -84,66 +87,70 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 3, width = 2}
-        , child = results
+        , child = results searchResults
         }
     ]
   where
-    results :: Widget Event
-    results =
-      case searchResults of
-        SearchNotStarted -> widget Label []
-        SearchInProgress -> widget Label [#label := "Loading..."]
-        SearchFailure msg -> widget Label [#label := ("Search failed: " <> msg)]
-        SearchSuccess rows ->
-          let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
-              valueWidth = fromMaybe 1 $ maxValueTupleSize rows
-           in bin ScrolledWindow [#hexpand := True, #vexpand := True] $
-              container
-                Grid
-                [#hexpand := True, #columnSpacing := 12, #margin := 4] $
-              Vector.concatMap (resultRow keyWidth valueWidth) $
-              Vector.fromList $ zip [0 ..] (Foldable.toList rows)
-    resultRow ::
-         Integer -> Integer -> (Int32, SearchResult) -> Vector (GridChild Event)
-    resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
-      keyCells <> [eqCell] <> valueCells
-      where
-        eqCell :: GridChild Event
-        eqCell =
-          GridChild
-            { properties =
-                defaultGridChildProperties
-                  {topAttach = rowN, leftAttach = fromIntegral keyWidth}
-            , child = widget Label [#label := "<b>=</b>", #useMarkup := True]
-            }
-        keyCells :: Vector (GridChild Event)
-        keyCells =
-          case resultKey of
-            (t, Nothing) -> [cell keyWidth 0 t]
-            (_, Just ts) -> Vector.fromList $ uncurry (cell 1) <$> zip [0 ..] ts
-        valueCells :: Vector (GridChild Event)
-        valueCells =
-          case resultValue of
-            (t, Nothing) -> [cell valueWidth (keyWidth + 1) t]
-            (_, Just ts) ->
-              Vector.fromList $ uncurry (cell 1) <$> zip [keyWidth + 1 ..] ts
-        cell :: Integer -> Integer -> Text -> GridChild Event
-        cell width leftAttach label =
-          GridChild
-            { properties =
-                defaultGridChildProperties
-                  { topAttach = rowN
-                  , leftAttach = fromIntegral leftAttach
-                  , width = fromIntegral width
-                  }
-            , child = widget Label [#label := trim label, #halign := AlignStart]
-            }
     onChange :: (Text -> SearchRange) -> Entry -> IO Event
     onChange updateRange entry = do
       text <- entryGetText entry
       pure $ SetSearchRange $ updateRange text
     activateInputs :: Bool
     activateInputs = searchResults /= SearchInProgress
+
+results :: SearchResults -> Widget Event
+results =
+  \case
+    SearchNotStarted -> widget Label []
+    SearchInProgress -> widget Label [#label := "Loading..."]
+    SearchFailure msg -> widget Label [#label := ("Search failed: " <> msg)]
+    SearchSuccess rows ->
+      let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
+          valueWidth = fromMaybe 1 $ maxValueTupleSize rows
+       in bin ScrolledWindow [#hexpand := True, #vexpand := True] $
+          container Grid [#hexpand := True, #columnSpacing := 12, #margin := 4] $
+          Vector.concatMap (resultRow keyWidth valueWidth) $
+          Vector.fromList $ zip [0 ..] (Foldable.toList rows)
+
+resultRow ::
+     Integer -> Integer -> (Int32, SearchResult) -> Vector (GridChild Event)
+resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
+  keyCells <> [eqCell] <> valueCells
+  where
+    eqCell :: GridChild Event
+    eqCell =
+      GridChild
+        { properties =
+            defaultGridChildProperties
+              {topAttach = rowN, leftAttach = fromIntegral keyWidth}
+        , child = widget Label [#label := "<b>=</b>", #useMarkup := True]
+        }
+    keyCells :: Vector (GridChild Event)
+    keyCells =
+      case resultKey of
+        (t, Nothing) -> [cell keyWidth 0 t]
+        (_, Just ts) -> Vector.fromList $ uncurry (cell 1) <$> zip [0 ..] ts
+    valueCells :: Vector (GridChild Event)
+    valueCells =
+      case resultValue of
+        (t, Nothing) -> [cell valueWidth (keyWidth + 1) t]
+        (_, Just ts) ->
+          Vector.fromList $ uncurry (cell 1) <$> zip [keyWidth + 1 ..] ts
+    cell :: Integer -> Integer -> Text -> GridChild Event
+    cell width leftAttach label =
+      GridChild
+        { properties =
+            defaultGridChildProperties
+              { topAttach = rowN
+              , leftAttach = fromIntegral leftAttach
+              , width = fromIntegral width
+              }
+        , child = widget Label [#label := trim label, #halign := AlignStart]
+        }
+
+escapeSyntaxHelp :: Text
+escapeSyntaxHelp =
+  "Text will be UTF-8 encoded except for byte values specified in hex, like '\\xA0'. Use double slash '\\\\' to enter a single slash."
 
 trim :: Text -> Text
 trim = T.replace "\n" " " . T.replace "\r" " " . trim'
