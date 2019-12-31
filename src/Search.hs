@@ -119,7 +119,7 @@ results =
 resultRow ::
      Integer -> Integer -> (Int32, SearchResult) -> Vector (GridChild Event)
 resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
-  keyCells <> [eqCell] <> valueCells
+  Vector.fromList $ keyCells <> [eqCell] <> valueCells
   where
     eqCell :: GridChild Event
     eqCell =
@@ -129,17 +129,20 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               {topAttach = rowN, leftAttach = fromIntegral keyWidth}
         , child = widget Label [#label := "<b>=</b>", #useMarkup := True]
         }
-    keyCells :: Vector (GridChild Event)
+    keyCells :: [GridChild Event]
     keyCells =
       case resultKey of
         (t, Nothing) -> [rawCell keyWidth 0 t]
-        (_, Just ts) -> Vector.fromList $ uncurry elemCell <$> zip [0 ..] ts
-    valueCells :: Vector (GridChild Event)
+        (_, Just ts) -> zipWith (\i t -> elemCell i (tupleHelp i) t) [0 ..] ts
+    valueCells :: [GridChild Event]
     valueCells =
       case resultValue of
         (t, Nothing) -> [rawCell valueWidth (keyWidth + 1) t]
         (_, Just ts) ->
-          Vector.fromList $ uncurry elemCell <$> zip [keyWidth + 1 ..] ts
+          zipWith
+            (\i t -> elemCell (keyWidth + 1 + i) (tupleHelp i) t)
+            [0 ..]
+            ts
     rawCell :: Integer -> Integer -> ByteString -> GridChild Event
     rawCell width leftAttach label =
       GridChild
@@ -157,8 +160,8 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               , #halign := AlignStart
               ]
         }
-    elemCell :: Integer -> Elem -> GridChild Event
-    elemCell leftAttach elm =
+    elemCell :: Integer -> Text -> Elem -> GridChild Event
+    elemCell leftAttach tooltipPrefix elm =
       GridChild
         { properties =
             defaultGridChildProperties
@@ -166,12 +169,11 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               , leftAttach = fromIntegral leftAttach
               , width = 1
               }
-        , child = elemToWidget elm
+        , child = elemToWidget tooltipPrefix elm
         }
 
--- todo: Tuple field #1: ...
-elemToWidget :: Elem -> Widget Event
-elemToWidget =
+elemToWidget :: Text -> Elem -> Widget Event
+elemToWidget tooltipPrefix =
   \case
     LT.None -> w "null" "null value"
     LT.Bytes bs -> w (trim $ bytesToText bs) "binary data"
@@ -184,19 +186,28 @@ elemToWidget =
     LT.CompleteVS vs -> w (T.pack $ show vs) "complete versionstamp"
     LT.IncompleteVS vs -> w (T.pack $ show vs) "incomplete versionstamp"
     LT.Tuple es ->
-      container Box [#hexpand := True] (Vector.fromList $ tupleChild <$> es)
+      container
+        Box
+        [#hexpand := True]
+        (Vector.fromList $ zipWith tupleChild [0 ..] es)
   where
     w :: Text -> Text -> Widget Event
     w label tooltip =
       widget
         Label
-        [#label := label, #tooltipText := tooltip, #halign := AlignStart]
-    tupleChild :: Elem -> BoxChild Event
-    tupleChild e =
+        [ #label := label
+        , #tooltipText := (tooltipPrefix <> tooltip)
+        , #halign := AlignStart
+        ]
+    tupleChild :: Integer -> Elem -> BoxChild Event
+    tupleChild i e =
       BoxChild
-        { child = elemToWidget e
+        { child = elemToWidget (tooltipPrefix <> tupleHelp i) e
         , properties = defaultBoxChildProperties {expand = True, fill = True}
         }
+
+tupleHelp :: Integer -> Text
+tupleHelp index = "tuple item #" <> T.pack (show index) <> " -> "
 
 escapeSyntaxHelp :: Text
 escapeSyntaxHelp =
