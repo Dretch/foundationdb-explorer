@@ -18,6 +18,7 @@ dependencies:
 - process
 - sqlite-simple
 - text
+- uuid
 - vector
 
 

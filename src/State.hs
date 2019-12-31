@@ -12,10 +12,12 @@ module State
   , maxValueTupleSize
   ) where
 
-import           Data.Sequence (Seq, ViewR (..))
-import qualified Data.Sequence as S
-import           Data.Text     (Text)
-import           FoundationDB  (Database)
+import           Data.ByteString          (ByteString)
+import           Data.Sequence            (Seq, ViewR (..))
+import qualified Data.Sequence            as S
+import           Data.Text                (Text)
+import           FoundationDB             (Database)
+import           FoundationDB.Layer.Tuple (Elem)
 
 data State =
   State
@@ -45,8 +47,8 @@ data SearchResults
 
 data SearchResult =
   SearchResult
-    { resultKey   :: (Text, Maybe [Text])
-    , resultValue :: (Text, Maybe [Text])
+    { resultKey   :: (ByteString, Maybe [Elem])
+    , resultValue :: (ByteString, Maybe [Elem])
     }
   deriving (Eq, Show)
 
@@ -63,14 +65,13 @@ initialState database =
     }
 
 maxKeyTupleSize :: Seq SearchResult -> Maybe Integer
-maxKeyTupleSize = maxTupleSize resultKey
+maxKeyTupleSize = maxTupleSize . fmap resultKey
 
 maxValueTupleSize :: Seq SearchResult -> Maybe Integer
-maxValueTupleSize = maxTupleSize resultValue
+maxValueTupleSize = maxTupleSize . fmap resultValue
 
-maxTupleSize ::
-     (SearchResult -> (Text, Maybe [Text])) -> Seq SearchResult -> Maybe Integer
-maxTupleSize getter rows =
-  case S.viewr $ S.sort $ fmap length . snd . getter <$> rows of
+maxTupleSize :: Seq (ByteString, Maybe [Elem]) -> Maybe Integer
+maxTupleSize rows =
+  case S.viewr $ S.sort $ fmap length . snd <$> rows of
     S.EmptyR -> Nothing
     _ :> a   -> fromIntegral <$> a

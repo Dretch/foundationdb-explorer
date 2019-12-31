@@ -8,23 +8,27 @@ module Search
   ( view'
   ) where
 
+import           Bytes                             (bytesToText)
+import           Data.ByteString                   (ByteString)
 import           Data.Foldable                     as Foldable
 import           Data.Int                          (Int32)
 import           Data.Maybe                        (fromMaybe)
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
+import qualified Data.UUID                         as UUID
 import           Data.Vector                       (Vector)
 import qualified Data.Vector                       as Vector
-import           GI.Gtk                            (Align (..), Button (..),
-                                                    Entry (..), Grid (..),
-                                                    Label (..),
+import           Event                             (Event (..))
+import           FoundationDB.Layer.Tuple          (Elem)
+import qualified FoundationDB.Layer.Tuple          as LT
+import           GI.Gtk                            (Align (..), Box (..),
+                                                    Button (..), Entry (..),
+                                                    Grid (..), Label (..),
                                                     Orientation (..),
                                                     ScrolledWindow (..),
                                                     entryGetText)
 import           GI.Gtk.Declarative
 import           GI.Gtk.Declarative.Container.Grid
-
-import           Event                             (Event (..))
 import           State                             (Search (..),
                                                     SearchRange (..),
                                                     SearchResult (..),
@@ -128,16 +132,16 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
     keyCells :: Vector (GridChild Event)
     keyCells =
       case resultKey of
-        (t, Nothing) -> [cell keyWidth 0 t]
-        (_, Just ts) -> Vector.fromList $ uncurry (cell 1) <$> zip [0 ..] ts
+        (t, Nothing) -> [rawCell keyWidth 0 t]
+        (_, Just ts) -> Vector.fromList $ uncurry elemCell <$> zip [0 ..] ts
     valueCells :: Vector (GridChild Event)
     valueCells =
       case resultValue of
-        (t, Nothing) -> [cell valueWidth (keyWidth + 1) t]
+        (t, Nothing) -> [rawCell valueWidth (keyWidth + 1) t]
         (_, Just ts) ->
-          Vector.fromList $ uncurry (cell 1) <$> zip [keyWidth + 1 ..] ts
-    cell :: Integer -> Integer -> Text -> GridChild Event
-    cell width leftAttach label =
+          Vector.fromList $ uncurry elemCell <$> zip [keyWidth + 1 ..] ts
+    rawCell :: Integer -> Integer -> ByteString -> GridChild Event
+    rawCell width leftAttach label =
       GridChild
         { properties =
             defaultGridChildProperties
@@ -145,7 +149,53 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               , leftAttach = fromIntegral leftAttach
               , width = fromIntegral width
               }
-        , child = widget Label [#label := trim label, #halign := AlignStart]
+        , child =
+            widget
+              Label
+              [ #label := trim (bytesToText label)
+              , #tooltipText := "Raw binary data (can't decode as tuple)"
+              , #halign := AlignStart
+              ]
+        }
+    elemCell :: Integer -> Elem -> GridChild Event
+    elemCell leftAttach elm =
+      GridChild
+        { properties =
+            defaultGridChildProperties
+              { topAttach = rowN
+              , leftAttach = fromIntegral leftAttach
+              , width = 1
+              }
+        , child = elemToWidget elm
+        }
+
+-- todo: Tuple field #1: ...
+elemToWidget :: Elem -> Widget Event
+elemToWidget =
+  \case
+    LT.None -> w "null" "null value"
+    LT.Bytes bs -> w (trim $ bytesToText bs) "binary data"
+    LT.Text t -> w (trim t) "text"
+    LT.Int i -> w (T.pack $ show i) "integer"
+    LT.Float f -> w (T.pack $ show f) "float"
+    LT.Double d -> w (T.pack $ show d) "double"
+    LT.Bool b -> w (T.pack $ show b) "bool"
+    LT.UUID a b c d -> w (UUID.toText $ UUID.fromWords a b c d) "UUID"
+    LT.CompleteVS vs -> w (T.pack $ show vs) "complete versionstamp"
+    LT.IncompleteVS vs -> w (T.pack $ show vs) "incomplete versionstamp"
+    LT.Tuple es ->
+      container Box [#hexpand := True] (Vector.fromList $ tupleChild <$> es)
+  where
+    w :: Text -> Text -> Widget Event
+    w label tooltip =
+      widget
+        Label
+        [#label := label, #tooltipText := tooltip, #halign := AlignStart]
+    tupleChild :: Elem -> BoxChild Event
+    tupleChild e =
+      BoxChild
+        { child = elemToWidget e
+        , properties = defaultBoxChildProperties {expand = True, fill = True}
         }
 
 escapeSyntaxHelp :: Text
