@@ -13,6 +13,7 @@ import           Data.ByteString                   (ByteString)
 import           Data.Foldable                     as Foldable
 import           Data.Int                          (Int32)
 import           Data.Maybe                        (fromMaybe)
+import qualified Data.Sequence                     as S
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import qualified Data.UUID                         as UUID
@@ -35,6 +36,7 @@ import           State                             (Search (..),
                                                     SearchResults (..),
                                                     maxKeyTupleSize,
                                                     maxValueTupleSize)
+import           Text.Printf                       (printf)
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =
@@ -93,6 +95,10 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         { properties = defaultGridChildProperties {topAttach = 3, width = 2}
         , child = results searchResults
         }
+    , GridChild
+        { properties = defaultGridChildProperties {topAttach = 4, width = 2}
+        , child = statusbar searchResults
+        }
     ]
   where
     onChange :: (Text -> SearchRange) -> Entry -> IO Event
@@ -108,7 +114,7 @@ results =
     SearchNotStarted -> widget Label []
     SearchInProgress -> widget Label [#label := "Loading..."]
     SearchFailure msg -> widget Label [#label := ("Search failed: " <> msg)]
-    SearchSuccess rows ->
+    SearchSuccess _duration rows ->
       let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
           valueWidth = fromMaybe 1 $ maxValueTupleSize rows
        in bin ScrolledWindow [#hexpand := True, #vexpand := True] $
@@ -205,6 +211,16 @@ elemToWidget tooltipPrefix =
         { child = elemToWidget (tooltipPrefix <> tupleHelp i) e
         , properties = defaultBoxChildProperties {expand = True, fill = True}
         }
+
+statusbar :: SearchResults -> Widget Event
+statusbar res = widget Label [#label := label, #halign := AlignStart]
+  where
+    label
+      | SearchSuccess duration rows <- res =
+        let nRows = show $ S.length rows
+            dur = printf "%.3fs" (realToFrac duration :: Double)
+         in T.pack $ "Fetched " <> nRows <> " keys in " <> dur
+      | otherwise = ""
 
 tupleHelp :: Integer -> Text
 tupleHelp index = "tuple item #" <> T.pack (show index) <> " -> "

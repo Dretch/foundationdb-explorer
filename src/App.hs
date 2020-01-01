@@ -12,6 +12,7 @@ module App
 
 import           Control.Concurrent                    (threadDelay)
 import           Control.Exception                     (displayException)
+import           Data.Either.Extra                     (mapLeft)
 import           Data.Text                             (pack)
 import           FoundationDB                          (Database)
 import           GI.Gtk                                (Align (..), Label (..),
@@ -62,15 +63,14 @@ update' state@State {search} (SetSearchRange range) =
 update' state@State {database, search} StartSearch =
   Transition state {search = search {searchResults = SearchInProgress}} $ do
     res <- getSearchResult database (searchRange search)
-    pure . Just . FinishSearch $
-      either (Left . pack . displayException) Right res
+    pure . Just . FinishSearch $ mapLeft (pack . displayException) res
 update' state@State {} (FinishSearch results) =
-  let searchResults = either SearchFailure SearchSuccess results
+  let searchResults = either SearchFailure (uncurry SearchSuccess) results
    in Transition state {search = (search state) {searchResults}} (pure Nothing)
 update' _state Close = Exit
 
 app :: Database -> App Window State Event
-app db = do
+app db =
   App
     { view = view'
     , update = update'

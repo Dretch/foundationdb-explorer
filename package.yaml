@@ -8,6 +8,7 @@ dependencies:
 - containers
 - data-default-class
 - errors
+- extra
 - foundationdb-haskell
 - gi-glib
 - gi-gtk
@@ -18,6 +19,7 @@ dependencies:
 - process
 - sqlite-simple
 - text
+- time
 - uuid
 - vector
 

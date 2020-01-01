@@ -40,6 +40,7 @@ packages:
 extra-deps:
 - gi-gtk-declarative-0.6.0@sha256:e237751dccb85367891b4238d0a0f9463a1851c658e7da2282e3b11571445a04
 - gi-gtk-declarative-app-simple-0.6.0@sha256:96bbc8a584fcfc183b099c3393e7f81b78c35d7b9e79b2eae340fa2202f59bf7
+- time-1.9.3
 - git: "https://github.com/crclark/foundationdb-haskell"
   commit: "f42a244849af25b43a2544fc9e7c07a6d61340c6"
 

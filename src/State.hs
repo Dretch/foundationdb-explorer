@@ -16,6 +16,7 @@ import           Data.ByteString          (ByteString)
 import           Data.Sequence            (Seq, ViewR (..))
 import qualified Data.Sequence            as S
 import           Data.Text                (Text)
+import           Data.Time.Clock          (NominalDiffTime)
 import           FoundationDB             (Database)
 import           FoundationDB.Layer.Tuple (Elem)
 
@@ -41,7 +42,7 @@ data SearchRange =
 data SearchResults
   = SearchNotStarted
   | SearchInProgress
-  | SearchSuccess (Seq SearchResult)
+  | SearchSuccess NominalDiffTime (Seq SearchResult)
   | SearchFailure Text
   deriving (Eq)
 

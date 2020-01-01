@@ -17,6 +17,9 @@ import           Data.Sequence            (Seq)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8)
+import           Data.Time.Clock          (NominalDiffTime)
+import qualified Data.Time.Clock          as Clock
+import           Data.Tuple.Extra         (both)
 import           FoundationDB             (Database, Error, Range (..))
 import qualified FoundationDB             as FDB
 import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems)
@@ -36,15 +39,19 @@ getStatus db = do
   T.pack <$> P.readProcess "fdbcli" (cArgs <> ["--exec", "status"]) ""
 
 getSearchResult ::
-     Database -> SearchRange -> IO (Either Error (Seq SearchResult))
+     Database
+  -> SearchRange
+  -> IO (Either Error (NominalDiffTime, Seq SearchResult))
 getSearchResult db SearchRange {..} = do
-  try $
-    FDB.runTransaction db $ do
-      let range = FDB.keyRange (textToBytes searchFrom) (textToBytes searchTo)
-      pairs <- FDB.getEntireRange range {rangeLimit = Just 100} -- todo: make configurable
-      pure $
-        (\(k, v) -> SearchResult {resultKey = decode k, resultValue = decode v}) <$>
-        pairs
+  try $ do
+    startTime <- Clock.getCurrentTime
+    rows <-
+      FDB.runTransaction db $ do
+        let range = FDB.keyRange (textToBytes searchFrom) (textToBytes searchTo)
+        pairs <- FDB.getEntireRange range {rangeLimit = Just 100} -- todo: make configurable
+        pure $ uncurry SearchResult . both decode <$> pairs
+    endTime <- Clock.getCurrentTime
+    pure (Clock.diffUTCTime endTime startTime, rows)
 
 decode :: ByteString -> (ByteString, Maybe [Elem])
 decode b = (b, hush $ decodeTupleElems b)
