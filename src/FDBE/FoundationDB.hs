@@ -2,13 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module FoundationDBUtil
+module FDBE.FoundationDB
   ( getClusterFilePath
   , getStatus
   , getSearchResult
   ) where
 
-import           Bytes                    (textToBytes)
 import           Control.Error.Util       (hush)
 import           Control.Exception        (try)
 import           Data.ByteString          (ByteString)
@@ -23,8 +22,10 @@ import           Data.Tuple.Extra         (both)
 import           FoundationDB             (Database, Error, Range (..))
 import qualified FoundationDB             as FDB
 import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems)
-import           State                    (SearchRange (..), SearchResult (..))
 import qualified System.Process           as P
+
+import           FDBE.Bytes               (textToBytes)
+import           FDBE.State               (SearchRange (..), SearchResult (..))
 
 getClusterFilePath :: Database -> IO (Maybe Text)
 getClusterFilePath db = do

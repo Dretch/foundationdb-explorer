@@ -4,11 +4,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Search
+module FDBE.Search
   ( view'
   ) where
 
-import           Bytes                             (bytesToText)
 import           Data.ByteString                   (ByteString)
 import           Data.Foldable                     as Foldable
 import           Data.Int                          (Int32)
@@ -19,7 +18,6 @@ import qualified Data.Text                         as T
 import qualified Data.UUID                         as UUID
 import           Data.Vector                       (Vector)
 import qualified Data.Vector                       as Vector
-import           Event                             (Event (..))
 import           FoundationDB.Layer.Tuple          (Elem)
 import qualified FoundationDB.Layer.Tuple          as LT
 import           GI.Gtk                            (Align (..), Box (..),
@@ -30,13 +28,16 @@ import           GI.Gtk                            (Align (..), Box (..),
                                                     entryGetText)
 import           GI.Gtk.Declarative
 import           GI.Gtk.Declarative.Container.Grid
-import           State                             (Search (..),
+import           Text.Printf                       (printf)
+
+import           FDBE.Bytes                        (bytesToText)
+import           FDBE.Event                        (Event (..))
+import           FDBE.State                        (Search (..),
                                                     SearchRange (..),
                                                     SearchResult (..),
                                                     SearchResults (..),
                                                     maxKeyTupleSize,
                                                     maxValueTupleSize)
-import           Text.Printf                       (printf)
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =

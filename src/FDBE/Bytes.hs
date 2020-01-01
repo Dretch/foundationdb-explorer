@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Bytes
+module FDBE.Bytes
   ( textToBytes
   , bytesToText
   ) where

@@ -4,8 +4,8 @@ import           Control.Monad                 (void)
 import qualified FoundationDB                  as FDB
 import           GI.Gtk.Declarative.App.Simple (run)
 
-import qualified App                           (app)
+import           FDBE.App                      (app)
 
 main :: IO ()
 main = do
-  FDB.withFoundationDB FDB.defaultOptions $ void . run . App.app
+  FDB.withFoundationDB FDB.defaultOptions $ void . run . app

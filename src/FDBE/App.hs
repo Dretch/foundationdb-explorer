@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module App
+module FDBE.App
   ( State
   , Event
   , app
@@ -22,15 +22,16 @@ import           GI.Gtk.Declarative.App.Simple
 import           Pipes                                 (yield)
 import           Pipes.Prelude                         (repeatM)
 
-import           Event                                 (Event (..))
-import           FoundationDBUtil                      (getSearchResult,
-                                                        getStatus)
 import           GI.Gtk.Declarative.Container.Notebook (notebook, page)
-import qualified Search
-import           State                                 (Search (..),
+
+import           FDBE.Event                            (Event (..))
+import           FDBE.FoundationDB                     (getSearchResult,
+                                                        getStatus)
+import qualified FDBE.Search                           as Search
+import           FDBE.State                            (Search (..),
                                                         SearchResults (..),
                                                         State (..))
-import qualified State
+import qualified FDBE.State                            as State
 
 view' :: State -> AppView Window Event
 view' State {..} =

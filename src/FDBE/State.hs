@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module State
+module FDBE.State
   ( State(..)
   , Search(..)
   , SearchRange(..)
