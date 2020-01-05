@@ -173,6 +173,8 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               Label
               [ #label := trim (bytesToText label)
               , #tooltipText := "Raw binary data (can't decode as tuple)"
+              , #selectable := True
+              , #singleLineMode := True
               , #halign := AlignStart
               ]
         }
@@ -213,6 +215,8 @@ elemToWidget tooltipPrefix =
         Label
         [ #label := label
         , #tooltipText := (tooltipPrefix <> tooltip)
+        , #selectable := True
+        , #singleLineMode := True
         , #halign := AlignStart
         ]
     tupleChild :: Integer -> Elem -> BoxChild Event
