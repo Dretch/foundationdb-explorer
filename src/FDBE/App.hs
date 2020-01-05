@@ -38,12 +38,12 @@ view' State {..} =
   bin
     Window
     [ #title := "FoundationDB Explorer"
-    , on #deleteEvent (const (True, Close))
+    , on #deleteEvent $ const (True, Close)
     , #widthRequest := 500
     ] $
   notebook
     []
-    [ page "Search" (Search.view' search)
+    [ page "Search" $ Search.view' search
     , page "Status" $
       widget
         Label

@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
@@ -49,7 +50,8 @@ getSearchResult db SearchRange {..} = do
     rows <-
       FDB.runTransaction db $ do
         let range = FDB.keyRange (textToBytes searchFrom) (textToBytes searchTo)
-        pairs <- FDB.getEntireRange range {rangeLimit = Just 100} -- todo: make configurable
+            rangeLimit = Just $ fromIntegral searchLimit
+        pairs <- FDB.getEntireRange range {rangeLimit}
         pure $ uncurry SearchResult . both decode <$> pairs
     endTime <- Clock.getCurrentTime
     pure (Clock.diffUTCTime endTime startTime, rows)

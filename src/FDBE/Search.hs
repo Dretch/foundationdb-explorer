@@ -32,6 +32,7 @@ import           Text.Printf                       (printf)
 
 import           FDBE.Bytes                        (bytesToText)
 import           FDBE.Event                        (Event (..))
+import           FDBE.LimitSpinner                 (limitSpinner)
 import           FDBE.State                        (Search (..),
                                                     SearchRange (..),
                                                     SearchResult (..),
@@ -82,7 +83,15 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
               ]
         }
     , GridChild
-        { properties = defaultGridChildProperties {topAttach = 2, width = 2}
+        { properties = defaultGridChildProperties {topAttach = 2}
+        , child = widget Label [#label := "Limit", #halign := AlignEnd]
+        }
+    , GridChild
+        { properties = defaultGridChildProperties {topAttach = 2, leftAttach = 1}
+        , child = limitSpinner searchRange
+        }
+    , GridChild
+        { properties = defaultGridChildProperties {topAttach = 3, width = 2}
         , child =
             widget
               Button
@@ -93,11 +102,11 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
               ]
         }
     , GridChild
-        { properties = defaultGridChildProperties {topAttach = 3, width = 2}
+        { properties = defaultGridChildProperties {topAttach = 4, width = 2}
         , child = results searchResults
         }
     , GridChild
-        { properties = defaultGridChildProperties {topAttach = 4, width = 2}
+        { properties = defaultGridChildProperties {topAttach = 5, width = 2}
         , child = statusbar searchResults
         }
     ]

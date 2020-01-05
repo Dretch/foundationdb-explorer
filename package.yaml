@@ -11,6 +11,7 @@ dependencies:
 - extra
 - foundationdb-haskell
 - gi-glib
+- gi-gobject
 - gi-gtk
 - gi-gtk-declarative
 - gi-gtk-declarative-app-simple
