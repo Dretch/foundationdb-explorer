@@ -48,6 +48,7 @@ view' State {..} =
       widget
         Label
         [ #label := status
+        , classes ["status"]
         , #margin := 10
         , #halign := AlignStart
         , #valign := AlignStart

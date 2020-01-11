@@ -3,13 +3,16 @@ version:             0.1.0.0
 license:             BSD3
 
 dependencies:
+- async
 - base >= 4.7 && < 5
 - bytestring
 - containers
 - data-default-class
 - errors
 - extra
+- file-embed
 - foundationdb-haskell
+- gi-gdk
 - gi-glib
 - gi-gobject
 - gi-gtk
