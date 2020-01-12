@@ -22,7 +22,8 @@ import           FoundationDB.Layer.Tuple          (Elem)
 import qualified FoundationDB.Layer.Tuple          as LT
 import           GI.Gtk                            (Align (..), Box (..),
                                                     Button (..), Entry (..),
-                                                    Grid (..), Label (..),
+                                                    Frame (..), Grid (..),
+                                                    Label (..),
                                                     Orientation (..),
                                                     ScrolledWindow (..),
                                                     entryGetText)
@@ -87,7 +88,8 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         , child = widget Label [#label := "Limit", #halign := AlignEnd]
         }
     , GridChild
-        { properties = defaultGridChildProperties {topAttach = 2, leftAttach = 1}
+        { properties =
+            defaultGridChildProperties {topAttach = 2, leftAttach = 1}
         , child = limitSpinner searchRange
         }
     , GridChild
@@ -128,7 +130,7 @@ results =
       let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
           valueWidth = fromMaybe 1 $ maxValueTupleSize rows
        in bin ScrolledWindow [#hexpand := True, #vexpand := True] $
-          container Grid [#hexpand := True, #columnSpacing := 12, #margin := 4] $
+          container Grid [#hexpand := True] $
           Vector.concatMap (resultRow keyWidth valueWidth) $
           Vector.fromList $ zip [0 ..] (Foldable.toList rows)
 
@@ -143,7 +145,7 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
         { properties =
             defaultGridChildProperties
               {topAttach = rowN, leftAttach = fromIntegral keyWidth}
-        , child = widget Label [#label := "<b>=</b>", #useMarkup := True]
+        , child = widget Label [#label := "=", classes ["equals-cell"]]
         }
     keyCells :: [GridChild Event]
     keyCells =
@@ -169,14 +171,10 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               , width = fromIntegral width
               }
         , child =
-            widget
-              Label
-              [ #label := trim (bytesToText label)
-              , #tooltipText := "Raw binary data (can't decode as tuple)"
-              , #selectable := True
-              , #singleLineMode := True
-              , #halign := AlignStart
-              ]
+            resultLabel
+              rowN
+              (trim $ bytesToText label)
+              "Raw binary data (can't decode as tuple)"
         }
     elemCell :: Integer -> Text -> Elem -> GridChild Event
     elemCell leftAttach tooltipPrefix elm =
@@ -187,11 +185,11 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               , leftAttach = fromIntegral leftAttach
               , width = 1
               }
-        , child = elemToWidget tooltipPrefix elm
+        , child = elemToWidget rowN tooltipPrefix elm
         }
 
-elemToWidget :: Text -> Elem -> Widget Event
-elemToWidget tooltipPrefix =
+elemToWidget :: Int32 -> Text -> Elem -> Widget Event
+elemToWidget rowN tooltipPrefix =
   \case
     LT.None -> w "null" "null value"
     LT.Bytes bs -> w (trim $ bytesToText bs) "binary data"
@@ -206,25 +204,32 @@ elemToWidget tooltipPrefix =
     LT.Tuple es ->
       container
         Box
-        [#hexpand := True]
+        [#spacing := 2, classes ["result-tuple"]]
         (Vector.fromList $ zipWith tupleChild [0 ..] es)
   where
     w :: Text -> Text -> Widget Event
-    w label tooltip =
-      widget
-        Label
-        [ #label := label
-        , #tooltipText := (tooltipPrefix <> tooltip)
-        , #selectable := True
-        , #singleLineMode := True
-        , #halign := AlignStart
-        ]
+    w label tooltip = resultLabel rowN label (tooltipPrefix <> tooltip)
     tupleChild :: Integer -> Elem -> BoxChild Event
     tupleChild i e =
       BoxChild
-        { child = elemToWidget (tooltipPrefix <> tupleHelp i) e
+        { child = elemToWidget rowN (tooltipPrefix <> tupleHelp i) e
         , properties = defaultBoxChildProperties {expand = True, fill = True}
         }
+
+resultLabel :: Int32 -> Text -> Text -> Widget Event
+resultLabel rowN label tooltip =
+  bin Frame [classes cls] $ widget Label labelAttrs
+  where
+    labelAttrs =
+      [ #label := label
+      , #tooltipText := tooltip
+      , #selectable := True
+      , #singleLineMode := True
+      , #halign := AlignStart
+      ]
+    cls
+      | rowN `mod` 2 == 0 = ["result-cell", "result-cell-stripe"]
+      | otherwise = ["result-cell"]
 
 statusbar :: SearchResults -> Widget Event
 statusbar res = widget Label [#label := label, #halign := AlignStart]
