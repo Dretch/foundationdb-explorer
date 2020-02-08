@@ -43,7 +43,11 @@ data SearchRange =
 data SearchResults
   = SearchNotStarted
   | SearchInProgress
-  | SearchSuccess NominalDiffTime (Seq SearchResult)
+  | SearchSuccess
+      { searchResultsDuration :: NominalDiffTime
+      , searchResultsSeq      :: Seq SearchResult
+      , searchResultsViewFull :: Maybe Text
+      }
   | SearchFailure Text
   deriving (Eq)
 

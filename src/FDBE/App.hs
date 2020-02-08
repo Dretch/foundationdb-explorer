@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedLabels  #-}
 {-# LANGUAGE OverloadedLists   #-}
@@ -16,7 +17,7 @@ import           Data.Either.Extra                     (mapLeft)
 import           Data.Text                             (pack)
 import           FoundationDB                          (Database)
 import           GI.Gtk                                (Align (..), Label (..),
-                                                        Window (..))
+                                                        Window (..), WindowPosition (..))
 import           GI.Gtk.Declarative
 import           GI.Gtk.Declarative.App.Simple
 import           Pipes                                 (yield)
@@ -40,6 +41,7 @@ view' State {..} =
     [ #title := "FoundationDB Explorer"
     , on #deleteEvent $ const (True, Close)
     , #widthRequest := 500
+    , #windowPosition := WindowPositionCenter
     ] $
   notebook
     []
@@ -56,20 +58,26 @@ view' State {..} =
     ]
 
 update' :: State -> Event -> Transition State Event
-update' state@State {..} ReloadStatus =
-  Transition state $ (Just . SetStatus) <$> getStatus database
-update' state@State {..} (SetStatus status') =
-  Transition state {status = status'} (pure Nothing)
-update' state@State {search} (SetSearchRange range) =
-  Transition state {search = search {searchRange = range}} (pure Nothing)
-update' state@State {database, search} StartSearch =
-  Transition state {search = search {searchResults = SearchInProgress}} $ do
-    res <- getSearchResult database (searchRange search)
-    pure . Just . FinishSearch $ mapLeft (pack . displayException) res
-update' state@State {} (FinishSearch results) =
-  let searchResults = either SearchFailure (uncurry SearchSuccess) results
-   in Transition state {search = (search state) {searchResults}} (pure Nothing)
-update' _state Close = Exit
+update' state@State {..} = \case
+  ReloadStatus ->
+    Transition state $ (Just . SetStatus) <$> getStatus database
+  SetStatus status' ->
+    Transition state {status = status'} (pure Nothing)
+  SetSearchRange range ->
+    Transition state {search = search {searchRange = range}} (pure Nothing)
+  StartSearch ->
+    Transition state {search = search {searchResults = SearchInProgress}} $ do
+      res <- getSearchResult database (searchRange search)
+      pure . Just . FinishSearch $ mapLeft (pack . displayException) res
+  FinishSearch results ->
+    let mkSuccess = \(searchResultsDuration, searchResultsSeq) ->
+          SearchSuccess{searchResultsViewFull = Nothing, ..}
+        searchResults = either SearchFailure mkSuccess results
+     in Transition state {search = search {searchResults}} (pure Nothing)
+  SetSearchResultsViewFull t ->
+    Transition state {search = search { searchResults = (searchResults search) {searchResultsViewFull = t}}} (pure Nothing)
+  Close ->
+    Exit
 
 app :: Database -> App Window State Event
 app db =

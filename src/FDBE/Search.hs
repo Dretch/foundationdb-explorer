@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedLabels  #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -8,48 +9,54 @@ module FDBE.Search
   ( view'
   ) where
 
-import           Data.ByteString                   (ByteString)
-import           Data.Foldable                     as Foldable
-import           Data.Int                          (Int32)
-import           Data.Maybe                        (fromMaybe)
-import qualified Data.Sequence                     as S
-import           Data.Text                         (Text)
-import qualified Data.Text                         as T
-import qualified Data.UUID                         as UUID
-import           Data.Vector                       (Vector)
-import qualified Data.Vector                       as Vector
-import           FoundationDB.Layer.Tuple          (Elem)
-import qualified FoundationDB.Layer.Tuple          as LT
-import           GI.Gtk                            (Align (..), Box (..),
-                                                    Button (..), Entry (..),
-                                                    Frame (..), Grid (..),
-                                                    Label (..),
-                                                    Orientation (..),
-                                                    ScrolledWindow (..),
-                                                    entryGetText)
+import           Data.ByteString                             (ByteString)
+import           Data.Foldable                               as Foldable
+import           Data.Int                                    (Int32)
+import           Data.Maybe                                  (fromMaybe)
+import qualified Data.Sequence                               as S
+import           Data.Text                                   (Text)
+import qualified Data.Text                                   as T
+import qualified Data.UUID                                   as UUID
+import           Data.Vector                                 (Vector)
+import qualified Data.Vector                                 as Vector
+import           FoundationDB.Layer.Tuple                    (Elem)
+import qualified FoundationDB.Layer.Tuple                    as LT
+import           GI.Gtk                                      (Align (..),
+                                                              Box (..),
+                                                              Button (..),
+                                                              Entry (..),
+                                                              Frame (..),
+                                                              Grid (..),
+                                                              Label (..),
+                                                              Orientation (..),
+                                                              ScrolledWindow (..),
+                                                              Window (..),
+                                                              WindowPosition (..),
+                                                              entryGetText)
 import           GI.Gtk.Declarative
 import           GI.Gtk.Declarative.Container.Grid
-import           Text.Printf                       (printf)
+import           Text.Printf                                 (printf)
 
-import           FDBE.Bytes                        (bytesToText)
-import           FDBE.Event                        (Event (..))
-import           FDBE.LimitSpinner                 (limitSpinner)
-import           FDBE.State                        (Search (..),
-                                                    SearchRange (..),
-                                                    SearchResult (..),
-                                                    SearchResults (..),
-                                                    maxKeyTupleSize,
-                                                    maxValueTupleSize)
+import           FDBE.Bytes                                  (bytesToText)
+import           FDBE.Event                                  (Event (..))
+import           FDBE.LimitSpinner                           (limitSpinner)
+import           FDBE.State                                  (Search (..),
+                                                              SearchRange (..),
+                                                              SearchResult (..),
+                                                              SearchResults (..),
+                                                              maxKeyTupleSize,
+                                                              maxValueTupleSize)
+import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =
   container
     Grid
-    [ #orientation := OrientationVertical
+    ([ #orientation := OrientationVertical
     , #margin := 4
     , #rowSpacing := 4
     , #columnSpacing := 4
-    ]
+    ] <> windows searchResults)
     [ GridChild
         { properties = defaultGridChildProperties
         , child = widget Label [#label := "From", #halign := AlignEnd]
@@ -120,13 +127,41 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
     activateInputs :: Bool
     activateInputs = searchResults /= SearchInProgress
 
+windows :: SearchResults -> Vector (Attribute widget Event)
+windows = \case
+  SearchSuccess{searchResultsViewFull = Just res} -> [window $ mkWindow res]
+  _ -> []
+  where
+    mkWindow :: Text -> Bin Window Event
+    mkWindow text =
+      bin Window
+        [ #widthRequest := 600
+        , #heightRequest := 400
+        , #windowPosition := WindowPositionCenter
+        , #title := "View full text"
+        , on #deleteEvent (const (True, SetSearchResultsViewFull Nothing))
+        ]
+        (bin ScrolledWindow
+          [ #hexpand := True
+          , #vexpand := True
+          ]
+          (widget Label
+            [ #label := text
+            , #halign := AlignStart
+            , #valign := AlignStart
+            , #margin := 4
+            , #selectable := True
+            ]
+          )
+        )
+
 results :: SearchResults -> Widget Event
 results =
   \case
     SearchNotStarted -> widget Label []
     SearchInProgress -> widget Label [#label := "Loading..."]
     SearchFailure msg -> widget Label [#label := ("Search failed: " <> msg)]
-    SearchSuccess _duration rows ->
+    SearchSuccess {searchResultsSeq = rows} ->
       let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
           valueWidth = fromMaybe 1 $ maxValueTupleSize rows
        in bin ScrolledWindow [#hexpand := True, #vexpand := True] $
@@ -173,7 +208,7 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
         , child =
             resultLabel
               rowN
-              (trim $ bytesToText label)
+              (bytesToText label)
               "Raw binary data (can't decode as tuple)"
         }
     elemCell :: Integer -> Text -> Elem -> GridChild Event
@@ -192,8 +227,8 @@ elemToWidget :: Int32 -> Text -> Elem -> Widget Event
 elemToWidget rowN tooltipPrefix =
   \case
     LT.None -> w "null" "null value"
-    LT.Bytes bs -> w (trim $ bytesToText bs) "binary data"
-    LT.Text t -> w (trim t) "text"
+    LT.Bytes bs -> w (bytesToText bs) "binary data"
+    LT.Text t -> w t "text"
     LT.Int i -> w (T.pack $ show i) "integer"
     LT.Float f -> w (T.pack $ show f) "float"
     LT.Double d -> w (T.pack $ show d) "double"
@@ -218,11 +253,23 @@ elemToWidget rowN tooltipPrefix =
 
 resultLabel :: Int32 -> Text -> Text -> Widget Event
 resultLabel rowN label tooltip =
-  bin Frame [classes cls] $ widget Label labelAttrs
+  case trim label of
+    Nothing ->
+      bin Frame [classes cls] $ widget Label ([#label := label] <> labelAttrs)
+    Just trimmed ->
+      container
+        Box
+        [#spacing := 2, classes cls]
+        [ BoxChild
+            defaultBoxChildProperties
+            (widget Label $ [#label := trimmed] <> labelAttrs)
+        , BoxChild
+            defaultBoxChildProperties
+            (widget Button [#label := "...", #tooltipText := "View full value", on #clicked (SetSearchResultsViewFull $ Just label)])
+        ]
   where
     labelAttrs =
-      [ #label := label
-      , #tooltipText := tooltip
+      [ #tooltipText := tooltip
       , #selectable := True
       , #singleLineMode := True
       , #halign := AlignStart
@@ -235,9 +282,9 @@ statusbar :: SearchResults -> Widget Event
 statusbar res = widget Label [#label := label, #halign := AlignStart]
   where
     label
-      | SearchSuccess duration rows <- res =
+      | SearchSuccess {searchResultsDuration, searchResultsSeq = rows} <- res =
         let nRows = show $ S.length rows
-            dur = printf "%.3fs" (realToFrac duration :: Double)
+            dur = printf "%.3fs" (realToFrac searchResultsDuration :: Double)
          in T.pack $ "Fetched " <> nRows <> " keys in " <> dur
       | otherwise = ""
 
@@ -248,9 +295,12 @@ escapeSyntaxHelp :: Text
 escapeSyntaxHelp =
   "Text will be UTF-8 encoded except for byte values specified in hex, like '\\xA0'. Use double slash '\\\\' to enter a single slash."
 
-trim :: Text -> Text
-trim = T.replace "\n" " " . T.replace "\r" " " . trim'
+trim :: Text -> Maybe Text
+trim t
+  | trimmed == t = Nothing
+  | otherwise = Just trimmed
   where
+    trimmed = T.replace "\n" " " $ T.replace "\r" " " $ trim' t
     trim' s
       | T.length s <= 50 = s
-      | otherwise = T.take 47 s <> "..."
+      | otherwise = T.take 47 s

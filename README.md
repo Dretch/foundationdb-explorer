@@ -5,3 +5,5 @@
 - allow searching by tuple
 - make .deb
 - allow viewing the full text of truncated strings/binary
+- focus view-full-text-window when the text changes...
+- is Bin doing unncessary subscriptions because it doesn't ever emit patch = Keep ?

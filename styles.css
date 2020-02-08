@@ -24,3 +24,7 @@
 .result-tuple {
     border: 1px solid #e5e5e5;
 }
+
+.result-cell button {
+    padding: 0 2px;
+}

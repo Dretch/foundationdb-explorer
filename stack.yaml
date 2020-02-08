@@ -39,11 +39,13 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - time-1.9.3
-- git: "https://github.com/owickstrom/gi-gtk-declarative.git"
-  commit: "05d07c084c2cb18299fbf2f0b99e05effaf8d509"
-  subdirs:
-    - "gi-gtk-declarative"
-    - "gi-gtk-declarative-app-simple"
+- gi-gtk-declarative
+- gi-gtk-declarative-app-simple
+#- git: "https://github.com/owickstrom/gi-gtk-declarative.git"
+#  commit: "05d07c084c2cb18299fbf2f0b99e05effaf8d509"
+#  subdirs:
+#    - "gi-gtk-declarative"
+#    - "gi-gtk-declarative-app-simple"
 - git: "https://github.com/crclark/foundationdb-haskell"
   commit: "f42a244849af25b43a2544fc9e7c07a6d61340c6"
 

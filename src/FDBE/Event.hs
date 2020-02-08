@@ -13,4 +13,5 @@ data Event
   | SetSearchRange SearchRange
   | StartSearch
   | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
+  | SetSearchResultsViewFull (Maybe Text)
   | Close
