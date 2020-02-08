@@ -7,6 +7,7 @@ module FDBE.State
   , SearchRange(..)
   , SearchResults(..)
   , SearchResult(..)
+  , SearchResultsViewFull(..)
   , initialState
   , maxKeyTupleSize
   , maxValueTupleSize
@@ -16,7 +17,7 @@ import           Data.ByteString          (ByteString)
 import           Data.Sequence            (Seq, ViewR (..))
 import qualified Data.Sequence            as S
 import           Data.Text                (Text)
-import           Data.Time.Clock          (NominalDiffTime)
+import           Data.Time.Clock          (NominalDiffTime, UTCTime)
 import           FoundationDB             (Database)
 import           FoundationDB.Layer.Tuple (Elem)
 
@@ -46,9 +47,16 @@ data SearchResults
   | SearchSuccess
       { searchResultsDuration :: NominalDiffTime
       , searchResultsSeq      :: Seq SearchResult
-      , searchResultsViewFull :: Maybe Text
+      , searchResultsViewFull :: Maybe SearchResultsViewFull
       }
   | SearchFailure Text
+  deriving (Eq)
+
+data SearchResultsViewFull =
+  SearchResultsViewFull
+    { viewFullText :: Text
+    , viewFullTime :: UTCTime
+    }
   deriving (Eq)
 
 data SearchResult =

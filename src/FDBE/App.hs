@@ -13,6 +13,7 @@ module FDBE.App
 
 import           Control.Concurrent                    (threadDelay)
 import           Control.Exception                     (displayException)
+import           Data.Time.Clock                       (getCurrentTime)
 import           Data.Either.Extra                     (mapLeft)
 import           Data.Text                             (pack)
 import           FoundationDB                          (Database)
@@ -31,6 +32,7 @@ import           FDBE.FoundationDB                     (getSearchResult,
 import qualified FDBE.Search                           as Search
 import           FDBE.State                            (Search (..),
                                                         SearchResults (..),
+                                                        SearchResultsViewFull (..),
                                                         State (..))
 import qualified FDBE.State                            as State
 
@@ -74,8 +76,12 @@ update' state@State {..} = \case
           SearchSuccess{searchResultsViewFull = Nothing, ..}
         searchResults = either SearchFailure mkSuccess results
      in Transition state {search = search {searchResults}} (pure Nothing)
-  SetSearchResultsViewFull t ->
-    Transition state {search = search { searchResults = (searchResults search) {searchResultsViewFull = t}}} (pure Nothing)
+  SetSearchResultsViewFullPre viewFullText ->
+    let mkEvent viewFullTime =
+          Just . SetSearchResultsViewFull $ Just SearchResultsViewFull {..}
+     in Transition state (mkEvent <$> getCurrentTime)
+  SetSearchResultsViewFull searchResultsViewFull ->
+    Transition state {search = search { searchResults = (searchResults search) {searchResultsViewFull}}} (pure Nothing)
   Close ->
     Exit
 

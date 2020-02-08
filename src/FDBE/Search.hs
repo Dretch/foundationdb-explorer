@@ -44,9 +44,10 @@ import           FDBE.State                                  (Search (..),
                                                               SearchRange (..),
                                                               SearchResult (..),
                                                               SearchResults (..),
+                                                              SearchResultsViewFull (..),
                                                               maxKeyTupleSize,
                                                               maxValueTupleSize)
-import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
+import           GI.Gtk.Declarative.Attributes.Custom.Window (presentWindow, window)
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =
@@ -129,24 +130,25 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
 
 windows :: SearchResults -> Vector (Attribute widget Event)
 windows = \case
-  SearchSuccess{searchResultsViewFull = Just res} -> [window $ mkWindow res]
+  SearchSuccess { searchResultsViewFull = Just res } -> [window $ mkWindow res]
   _ -> []
   where
-    mkWindow :: Text -> Bin Window Event
-    mkWindow text =
+    mkWindow :: SearchResultsViewFull -> Bin Window Event
+    mkWindow SearchResultsViewFull {..} =
       bin Window
         [ #widthRequest := 600
         , #heightRequest := 400
         , #windowPosition := WindowPositionCenter
         , #title := "View full text"
         , on #deleteEvent (const (True, SetSearchResultsViewFull Nothing))
+        , presentWindow viewFullTime
         ]
         (bin ScrolledWindow
           [ #hexpand := True
           , #vexpand := True
           ]
           (widget Label
-            [ #label := text
+            [ #label := viewFullText
             , #halign := AlignStart
             , #valign := AlignStart
             , #margin := 4
@@ -265,7 +267,11 @@ resultLabel rowN label tooltip =
             (widget Label $ [#label := trimmed] <> labelAttrs)
         , BoxChild
             defaultBoxChildProperties
-            (widget Button [#label := "...", #tooltipText := "View full value", on #clicked (SetSearchResultsViewFull $ Just label)])
+            (widget Button
+              [ #label := "..."
+              , #tooltipText := "View full value"
+              , on #clicked (SetSearchResultsViewFullPre label)
+              ])
         ]
   where
     labelAttrs =

@@ -5,7 +5,7 @@ module FDBE.Event
 import           Data.Sequence   (Seq)
 import           Data.Text       (Text)
 import           Data.Time.Clock (NominalDiffTime)
-import           FDBE.State      (SearchRange, SearchResult)
+import           FDBE.State      (SearchRange, SearchResult, SearchResultsViewFull)
 
 data Event
   = ReloadStatus
@@ -13,5 +13,7 @@ data Event
   | SetSearchRange SearchRange
   | StartSearch
   | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
-  | SetSearchResultsViewFull (Maybe Text)
+  -- two events are needed instead of one, due to gi-gtk-declarative-app-simple API limitations
+  | SetSearchResultsViewFullPre Text
+  | SetSearchResultsViewFull (Maybe SearchResultsViewFull)
   | Close
