@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedLabels  #-}
@@ -19,6 +20,7 @@ import qualified Data.Text                                   as T
 import qualified Data.UUID                                   as UUID
 import           Data.Vector                                 (Vector)
 import qualified Data.Vector                                 as Vector
+import           FoundationDB.Versionstamp                   (Versionstamp (..), TransactionVersionstamp (..))
 import           FoundationDB.Layer.Tuple                    (Elem)
 import qualified FoundationDB.Layer.Tuple                    as LT
 import           GI.Gtk                                      (Align (..),
@@ -47,7 +49,8 @@ import           FDBE.State                                  (Search (..),
                                                               SearchResultsViewFull (..),
                                                               maxKeyTupleSize,
                                                               maxValueTupleSize)
-import           GI.Gtk.Declarative.Attributes.Custom.Window (presentWindow, window)
+import           GI.Gtk.Declarative.Attributes.Custom.Window (presentWindow,
+                                                              window)
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =
@@ -236,8 +239,10 @@ elemToWidget rowN tooltipPrefix =
     LT.Double d -> w (T.pack $ show d) "double"
     LT.Bool b -> w (T.pack $ show b) "bool"
     LT.UUID a b c d -> w (UUID.toText $ UUID.fromWords a b c d) "UUID"
-    LT.CompleteVS vs -> w (T.pack $ show vs) "complete versionstamp"
-    LT.IncompleteVS vs -> w (T.pack $ show vs) "incomplete versionstamp"
+    LT.CompleteVS (CompleteVersionstamp (TransactionVersionstamp tx batch) user) ->
+      w (T.pack $ printf "tx: %d, batch: %d, user: %d" tx batch user) "versionstamp"
+    LT.IncompleteVS (IncompleteVersionstamp user) ->
+      w (T.pack $ printf "user: %d" user) "incomplete versionstamp"
     LT.Tuple es ->
       container
         Box
