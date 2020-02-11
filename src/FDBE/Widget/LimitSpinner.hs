@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module FDBE.LimitSpinner (limitSpinner) where
+module FDBE.Widget.LimitSpinner (limitSpinner) where
 
 import           Control.Monad                  (void, when)
 import           Data.Vector                    (Vector)

@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | A widget for editing foundationdb tuples
-module FDBE.TupleEntry
+module FDBE.Widget.TupleEntry
   ( tupleEntry
   ) where
 
@@ -21,7 +21,7 @@ import           GI.Gtk                   (Align (..), Box (..), Button (..),
 import           GI.Gtk.Declarative
 
 import           FDBE.Bytes               (bytesToText, textToBytes)
-import           FDBE.ComboBoxText        (comboBoxText)
+import           FDBE.Widget.ComboBoxText (comboBoxText)
 
 tupleEntry
   :: Either Text [Elem]

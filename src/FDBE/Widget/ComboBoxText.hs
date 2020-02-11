@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 
 -- | A combobox that allow choosing some text from a number of options.
-module FDBE.ComboBoxText (comboBoxText) where
+module FDBE.Widget.ComboBoxText (comboBoxText) where
 
 import           Control.Monad      (forM_, when)
 import           Data.Text          (Text)

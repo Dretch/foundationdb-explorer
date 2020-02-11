@@ -42,8 +42,8 @@ import           Text.Printf                                 (printf)
 
 import           FDBE.Bytes                                  (bytesToText)
 import           FDBE.Event                                  (Event (..))
-import           FDBE.LimitSpinner                           (limitSpinner)
-import           FDBE.TupleEntry                             (tupleEntry)
+import           FDBE.Widget.LimitSpinner                    (limitSpinner)
+import           FDBE.Widget.TupleEntry                      (tupleEntry)
 import           FDBE.State                                  (Search (..),
                                                               SearchRange (..),
                                                               SearchResult (..),
