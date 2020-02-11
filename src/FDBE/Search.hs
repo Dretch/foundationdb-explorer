@@ -42,8 +42,6 @@ import           Text.Printf                                 (printf)
 
 import           FDBE.Bytes                                  (bytesToText)
 import           FDBE.Event                                  (Event (..))
-import           FDBE.Widget.LimitSpinner                    (limitSpinner)
-import           FDBE.Widget.TupleEntry                      (tupleEntry)
 import           FDBE.State                                  (Search (..),
                                                               SearchRange (..),
                                                               SearchResult (..),
@@ -51,6 +49,8 @@ import           FDBE.State                                  (Search (..),
                                                               SearchResultsViewFull (..),
                                                               maxKeyTupleSize,
                                                               maxValueTupleSize)
+import           FDBE.Widget.IntegerSpinner                  (integerSpinner)
+import           FDBE.Widget.TupleEntry                      (tupleEntry)
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =
@@ -89,7 +89,11 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
     , GridChild
         { properties =
             defaultGridChildProperties {topAttach = 2, leftAttach = 1}
-        , child = limitSpinner [#sensitive := activateInputs] searchRange
+        , child =
+            integerSpinner
+              [#sensitive := activateInputs]
+              searchLimit
+              (\v -> SetSearchRange searchRange { searchLimit = v })
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 3, width = 2}
