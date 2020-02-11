@@ -27,6 +27,7 @@ import           FoundationDB.Versionstamp                   (TransactionVersion
 import           GI.Gtk                                      (Align (..),
                                                               Box (..),
                                                               Button (..),
+                                                              CheckButton (..),
                                                               Frame (..),
                                                               Grid (..),
                                                               Label (..),
@@ -96,7 +97,17 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
               (\v -> SetSearchRange searchRange { searchLimit = v })
         }
     , GridChild
-        { properties = defaultGridChildProperties {topAttach = 3, width = 2}
+        { properties = defaultGridChildProperties {topAttach = 3, leftAttach = 1}
+        , child =
+            widget CheckButton
+              [ #label := "Reverse Order"
+              , #active := searchReverse
+              , #sensitive := activateInputs
+              , onM #toggled (fmap (\b -> SetSearchRange searchRange { searchReverse = b }) . #getActive)
+              ]
+        }
+    , GridChild
+        { properties = defaultGridChildProperties {topAttach = 4, width = 2}
         , child =
             widget
               Button
@@ -107,11 +118,11 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
               ]
         }
     , GridChild
-        { properties = defaultGridChildProperties {topAttach = 4, width = 2}
+        { properties = defaultGridChildProperties {topAttach = 5, width = 2}
         , child = results searchResults
         }
     , GridChild
-        { properties = defaultGridChildProperties {topAttach = 5, width = 2}
+        { properties = defaultGridChildProperties {topAttach = 6, width = 2}
         , child = statusbar searchResults
         }
     ]

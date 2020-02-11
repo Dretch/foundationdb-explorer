@@ -52,7 +52,7 @@ getSearchResult db SearchRange {..} = do
       FDB.runTransaction db $ do
         let range = FDB.keyRange (selectorToBytes searchFrom) (selectorToBytes searchTo)
             rangeLimit = Just $ fromIntegral searchLimit
-        pairs <- FDB.getEntireRange range {rangeLimit}
+        pairs <- FDB.getEntireRange range {rangeLimit, rangeReverse = searchReverse }
         pure $ uncurry SearchResult . both decode <$> pairs
     endTime <- Clock.getCurrentTime
     pure (Clock.diffUTCTime endTime startTime, rows)
