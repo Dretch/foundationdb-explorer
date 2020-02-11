@@ -20,28 +20,30 @@ import qualified Data.Text                                   as T
 import qualified Data.UUID                                   as UUID
 import           Data.Vector                                 (Vector)
 import qualified Data.Vector                                 as Vector
-import           FoundationDB.Versionstamp                   (Versionstamp (..), TransactionVersionstamp (..))
 import           FoundationDB.Layer.Tuple                    (Elem)
 import qualified FoundationDB.Layer.Tuple                    as LT
+import           FoundationDB.Versionstamp                   (TransactionVersionstamp (..),
+                                                              Versionstamp (..))
 import           GI.Gtk                                      (Align (..),
                                                               Box (..),
                                                               Button (..),
-                                                              Entry (..),
                                                               Frame (..),
                                                               Grid (..),
                                                               Label (..),
                                                               Orientation (..),
                                                               ScrolledWindow (..),
                                                               Window (..),
-                                                              WindowPosition (..),
-                                                              entryGetText)
+                                                              WindowPosition (..))
 import           GI.Gtk.Declarative
+import           GI.Gtk.Declarative.Attributes.Custom.Window (presentWindow,
+                                                              window)
 import           GI.Gtk.Declarative.Container.Grid
 import           Text.Printf                                 (printf)
 
 import           FDBE.Bytes                                  (bytesToText)
 import           FDBE.Event                                  (Event (..))
 import           FDBE.LimitSpinner                           (limitSpinner)
+import           FDBE.TupleEntry                             (tupleEntry)
 import           FDBE.State                                  (Search (..),
                                                               SearchRange (..),
                                                               SearchResult (..),
@@ -49,8 +51,6 @@ import           FDBE.State                                  (Search (..),
                                                               SearchResultsViewFull (..),
                                                               maxKeyTupleSize,
                                                               maxValueTupleSize)
-import           GI.Gtk.Declarative.Attributes.Custom.Window (presentWindow,
-                                                              window)
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =
@@ -63,36 +63,24 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
     ] <> windows searchResults)
     [ GridChild
         { properties = defaultGridChildProperties
-        , child = widget Label [#label := "From", #halign := AlignEnd]
+        , child =
+            widget Label [#label := "From", #marginTop := 6, #halign := AlignEnd, #valign := AlignStart]
         }
     , GridChild
         { properties = defaultGridChildProperties {leftAttach = 1}
         , child =
-            widget
-              Entry
-              [ #text := searchFrom
-              , #tooltipText := escapeSyntaxHelp
-              , onM #changed $ onChange (\t -> searchRange {searchFrom = t})
-              , #sensitive := activateInputs
-              , #hexpand := True
-              ]
+            tupleEntry searchFrom activateInputs (\s -> SetSearchRange searchRange {searchFrom = s})
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 1}
-        , child = widget Label [#label := "To", #halign := AlignEnd]
+        , child =
+            widget Label [#label := "To", #marginTop := 6, #halign := AlignEnd, #valign := AlignStart]
         }
     , GridChild
         { properties =
             defaultGridChildProperties {topAttach = 1, leftAttach = 1}
         , child =
-            widget
-              Entry
-              [ #text := searchTo
-              , #tooltipText := escapeSyntaxHelp
-              , onM #changed $ onChange (\t -> searchRange {searchTo = t})
-              , #sensitive := activateInputs
-              , #hexpand := True
-              ]
+            tupleEntry searchTo activateInputs (\s -> SetSearchRange searchRange {searchTo = s})
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 2}
@@ -101,7 +89,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
     , GridChild
         { properties =
             defaultGridChildProperties {topAttach = 2, leftAttach = 1}
-        , child = limitSpinner searchRange
+        , child = limitSpinner [#sensitive := activateInputs] searchRange
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 3, width = 2}
@@ -124,11 +112,6 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         }
     ]
   where
-    onChange :: (Text -> SearchRange) -> Entry -> IO Event
-    onChange updateRange entry = do
-      text <- entryGetText entry
-      pure $ SetSearchRange $ updateRange text
-    activateInputs :: Bool
     activateInputs = searchResults /= SearchInProgress
 
 windows :: SearchResults -> Vector (Attribute widget Event)
@@ -301,10 +284,6 @@ statusbar res = widget Label [#label := label, #halign := AlignStart]
 
 tupleHelp :: Integer -> Text
 tupleHelp index = "tuple item #" <> T.pack (show index) <> " -> "
-
-escapeSyntaxHelp :: Text
-escapeSyntaxHelp =
-  "Text will be UTF-8 encoded except for byte values specified in hex, like '\\xA0'. Use double slash '\\\\' to enter a single slash."
 
 trim :: Text -> Maybe Text
 trim t

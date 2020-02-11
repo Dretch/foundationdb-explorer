@@ -22,7 +22,8 @@ import qualified Data.Time.Clock          as Clock
 import           Data.Tuple.Extra         (both)
 import           FoundationDB             (Database, Error, Range (..))
 import qualified FoundationDB             as FDB
-import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems)
+import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems,
+                                           encodeTupleElems)
 import qualified System.Process           as P
 
 import           FDBE.Bytes               (textToBytes)
@@ -49,12 +50,15 @@ getSearchResult db SearchRange {..} = do
     startTime <- Clock.getCurrentTime
     rows <-
       FDB.runTransaction db $ do
-        let range = FDB.keyRange (textToBytes searchFrom) (textToBytes searchTo)
+        let range = FDB.keyRange (selectorToBytes searchFrom) (selectorToBytes searchTo)
             rangeLimit = Just $ fromIntegral searchLimit
         pairs <- FDB.getEntireRange range {rangeLimit}
         pure $ uncurry SearchResult . both decode <$> pairs
     endTime <- Clock.getCurrentTime
     pure (Clock.diffUTCTime endTime startTime, rows)
+
+selectorToBytes :: Either Text [Elem] -> ByteString
+selectorToBytes = either textToBytes encodeTupleElems
 
 decode :: ByteString -> (ByteString, Maybe [Elem])
 decode b = (b, hush $ decodeTupleElems b)

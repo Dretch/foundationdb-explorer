@@ -8,7 +8,8 @@
 
 module FDBE.LimitSpinner (limitSpinner) where
 
-import           Control.Monad                  (when, void)
+import           Control.Monad                  (void, when)
+import           Data.Vector                    (Vector)
 import qualified GI.GObject                     as GI
 import qualified GI.Gtk                         as Gtk
 import           GI.Gtk.Declarative
@@ -16,6 +17,14 @@ import           GI.Gtk.Declarative.EventSource (fromCancellation)
 
 import           FDBE.Event                     (Event (..))
 import           FDBE.State                     (SearchRange (..))
+
+limitSpinner
+  :: Vector (Attribute Gtk.SpinButton Event)
+  -> SearchRange
+  -> Widget Event
+limitSpinner attrs searchRange =
+  widget Gtk.SpinButton
+    $ attrs <> [customAttribute $ LimitSpinner searchRange SetSearchRange]
 
 data LimitSpinner event = LimitSpinner SearchRange (SearchRange -> event)
   deriving (Functor)
@@ -45,6 +54,3 @@ instance CustomAttribute Gtk.SpinButton LimitSpinner where
       cb . setSearchRange $ searchRange { searchLimit = truncate value }
     pure . fromCancellation $ GI.signalHandlerDisconnect spin h
 
-limitSpinner :: SearchRange -> Widget Event
-limitSpinner searchRange =
-  widget Gtk.SpinButton [customAttribute $ LimitSpinner searchRange SetSearchRange]

@@ -36,8 +36,8 @@ data Search =
 
 data SearchRange =
   SearchRange
-    { searchFrom  :: Text
-    , searchTo    :: Text
+    { searchFrom  :: Either Text [Elem]
+    , searchTo    :: Either Text [Elem]
     , searchLimit :: Integer
     }
 
@@ -75,7 +75,10 @@ initialState database =
         Search
           { searchRange =
               SearchRange
-                {searchFrom = "", searchTo = "\\xFF", searchLimit = 100}
+                { searchFrom = Left ""
+                , searchTo = Left "\\xFF"
+                , searchLimit = 100
+                }
           , searchResults = SearchNotStarted
           }
     }

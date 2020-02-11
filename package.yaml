@@ -18,6 +18,7 @@ dependencies:
 - gi-gtk
 - gi-gtk-declarative
 - gi-gtk-declarative-app-simple
+- ilist
 - megaparsec
 - pipes
 - process
