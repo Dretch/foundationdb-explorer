@@ -40,9 +40,9 @@ textToBytes key =
       void $ MC.string "\\x"
       a <- MC.hexDigitChar
       b <- MC.hexDigitChar
-      pure $ B.singleton $ (charToBase16 a `shiftL` 4) .|. charToBase16 b
-    charToBase16 :: Char -> Word8
-    charToBase16 =
+      pure $ B.singleton $ (fromBase16 a `shiftL` 4) .|. fromBase16 b
+    fromBase16 :: Char -> Word8
+    fromBase16 =
       fromIntegral .
       fromMaybe 0 . flip List.elemIndex "0123456789abcdef" . Char.toLower
     escapedSlash :: Parser ByteString
