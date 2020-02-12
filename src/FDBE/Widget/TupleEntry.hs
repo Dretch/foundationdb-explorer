@@ -94,15 +94,15 @@ tupleEntry' elems onChange =
         (position, input) = case field of
           LT.None           -> (0, noneInput)
           LT.Bytes bs       -> (1, bytesInput bs)
-          LT.Text t         -> (1, textInput t)
-          LT.Int _          -> (1, textInput "")
-          LT.Float _        -> (1, textInput "")
-          LT.Double _       -> (1, textInput "")
-          LT.Bool _         -> (1, textInput "")
-          LT.UUID _ _ _ _   -> (1, textInput "")
-          LT.CompleteVS _   -> (1, textInput "")
-          LT.IncompleteVS _ -> (1, textInput "")
-          LT.Tuple _        -> (1, textInput "")
+          LT.Text t         -> (2, textInput t)
+          LT.Int _          -> (2, textInput "")
+          LT.Float _        -> (2, textInput "")
+          LT.Double _       -> (2, textInput "")
+          LT.Bool _         -> (2, textInput "")
+          LT.UUID _ _ _ _   -> (2, textInput "")
+          LT.CompleteVS _   -> (2, textInput "")
+          LT.IncompleteVS _ -> (2, textInput "")
+          LT.Tuple _        -> (2, textInput "")
 
         noneInput =
           widget Label []
