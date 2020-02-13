@@ -99,7 +99,7 @@ tupleEntry' elems onChange =
           LT.Bytes bs       -> (1, bytesInput bs)
           LT.Text t         -> (2, textInput t)
           LT.Int x          -> (3, intInput x)
-          LT.Float f        -> (4, doubleInput $ realToFrac f)
+          LT.Float f        -> (4, floatInput f)
           LT.Double d       -> (5, doubleInput d)
           LT.Bool b         -> (6, boolInput b)
           LT.UUID _ _ _ _   -> (2, textInput "")
@@ -130,6 +130,9 @@ tupleEntry' elems onChange =
         boolInput b =
           comboBoxBool [] (Just b) (Just $ onElemValueChange . LT.Bool)
 
+        floatInput f =
+          doubleSpinner [] (realToFrac f) (onElemValueChange . LT.Float . realToFrac)
+        
         doubleInput d =
           doubleSpinner [] d (onElemValueChange . LT.Double)
 
