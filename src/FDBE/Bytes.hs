@@ -53,6 +53,8 @@ textToBytes key =
 bytesToText :: ByteString -> Text
 bytesToText = T.concat . fmap mapChar . B.unpack
   where
-    mapChar w
-      | Char.isPrint (B.w2c w) = T.singleton $ B.w2c w
-      | otherwise = T.pack $ Printf.printf "\\x%02x" w
+    mapChar w =
+      let c = B.w2c w in
+      if Char.isAlphaNum c && Char.isAscii c
+        then T.singleton c
+        else T.pack $ Printf.printf "\\x%02x" w
