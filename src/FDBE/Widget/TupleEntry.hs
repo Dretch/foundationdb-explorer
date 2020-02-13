@@ -21,6 +21,7 @@ import           GI.Gtk                   (Align (..), Box (..), Button (..),
 import           GI.Gtk.Declarative
 
 import           FDBE.Bytes               (bytesToText, textToBytes)
+import           FDBE.Widget.ComboBoxBool (comboBoxBool)
 import           FDBE.Widget.ComboBoxText (comboBoxText)
 
 tupleEntry
@@ -81,7 +82,7 @@ tupleEntry' elems onChange =
             ]
       where
         combo = comboBoxText []
-          ["None", "Bytes", "Text"]
+          ["None", "Bytes", "Text", "Bool"]
           (Just position)
           (Just onElemTypeChange)
 
@@ -98,7 +99,7 @@ tupleEntry' elems onChange =
           LT.Int _          -> (2, textInput "")
           LT.Float _        -> (2, textInput "")
           LT.Double _       -> (2, textInput "")
-          LT.Bool _         -> (2, textInput "")
+          LT.Bool b         -> (3, boolInput b)
           LT.UUID _ _ _ _   -> (2, textInput "")
           LT.CompleteVS _   -> (2, textInput "")
           LT.IncompleteVS _ -> (2, textInput "")
@@ -123,6 +124,9 @@ tupleEntry' elems onChange =
             , #hexpand := True
             , onM #changed (fmap (onElemValueChange . LT.Text) . entryGetText)
             ]
+        
+        boolInput b =
+          comboBoxBool [] (Just b) (Just $ onElemValueChange . LT.Bool)
 
         onElemTypeChange typePos =
           let newField =
@@ -130,6 +134,7 @@ tupleEntry' elems onChange =
                   0 -> LT.None
                   1 -> LT.Bytes ""
                   2 -> LT.Text ""
+                  3 -> LT.Bool False
                   _ -> error "invalid tuple element type position"
            in onChange $ setAt i newField elems
 
