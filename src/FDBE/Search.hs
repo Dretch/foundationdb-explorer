@@ -93,6 +93,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         , child =
             integerSpinner
               [#sensitive := activateInputs]
+              False
               searchLimit
               (\v -> SetSearchRange searchRange { searchLimit = v })
         }

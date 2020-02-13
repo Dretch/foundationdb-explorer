@@ -8,21 +8,23 @@ module FDBE.Widget.TupleEntry
   ( tupleEntry
   ) where
 
-import           Data.ByteString          (ByteString)
-import           Data.List.Extra          (snoc)
-import           Data.List.Index          (deleteAt, setAt)
-import           Data.Text                (Text)
-import qualified Data.Vector              as Vector
-import           FoundationDB.Layer.Tuple (Elem)
-import qualified FoundationDB.Layer.Tuple as LT
-import           GI.Gtk                   (Align (..), Box (..), Button (..),
-                                           Entry (..), Label (..),
-                                           Orientation (..), entryGetText)
+import           Data.ByteString            (ByteString)
+import           Data.List.Extra            (snoc)
+import           Data.List.Index            (deleteAt, setAt)
+import           Data.Text                  (Text)
+import qualified Data.Vector                as Vector
+import           FoundationDB.Layer.Tuple   (Elem)
+import qualified FoundationDB.Layer.Tuple   as LT
+import           GI.Gtk                     (Align (..), Box (..), Button (..),
+                                             Entry (..), Label (..),
+                                             Orientation (..), entryGetText)
 import           GI.Gtk.Declarative
 
-import           FDBE.Bytes               (bytesToText, textToBytes)
-import           FDBE.Widget.ComboBoxBool (comboBoxBool)
-import           FDBE.Widget.ComboBoxText (comboBoxText)
+import           FDBE.Bytes                 (bytesToText, textToBytes)
+import           FDBE.Widget.ComboBoxBool   (comboBoxBool)
+import           FDBE.Widget.ComboBoxText   (comboBoxText)
+import           FDBE.Widget.DoubleSpinner  (doubleSpinner)
+import           FDBE.Widget.IntegerSpinner (integerSpinner)
 
 tupleEntry
   :: Either Text [Elem]
@@ -42,7 +44,7 @@ tupleEntry tuple sensitive onChange =
       (Just onTypeChange)
 
     comboIndex = either (const 0) (const 1) tuple
-    
+
     onTypeChange i =
       case (i, tuple) of
         (0, Right t) ->
@@ -53,7 +55,7 @@ tupleEntry tuple sensitive onChange =
           onChange $ Right [LT.Text ""]
         _ ->
           onChange tuple
-    
+
     entry =
       case tuple of
         Left text   -> rawEntry text (onChange . Left)
@@ -82,7 +84,7 @@ tupleEntry' elems onChange =
             ]
       where
         combo = comboBoxText []
-          ["None", "Bytes", "Text", "Bool"]
+          ["None", "Bytes", "Text", "Int", "Float", "Double", "Bool"]
           (Just position)
           (Just onElemTypeChange)
 
@@ -96,10 +98,10 @@ tupleEntry' elems onChange =
           LT.None           -> (0, noneInput)
           LT.Bytes bs       -> (1, bytesInput bs)
           LT.Text t         -> (2, textInput t)
-          LT.Int _          -> (2, textInput "")
-          LT.Float _        -> (2, textInput "")
-          LT.Double _       -> (2, textInput "")
-          LT.Bool b         -> (3, boolInput b)
+          LT.Int x          -> (3, intInput x)
+          LT.Float f        -> (4, doubleInput $ realToFrac f)
+          LT.Double d       -> (5, doubleInput d)
+          LT.Bool b         -> (6, boolInput b)
           LT.UUID _ _ _ _   -> (2, textInput "")
           LT.CompleteVS _   -> (2, textInput "")
           LT.IncompleteVS _ -> (2, textInput "")
@@ -124,9 +126,15 @@ tupleEntry' elems onChange =
             , #hexpand := True
             , onM #changed (fmap (onElemValueChange . LT.Text) . entryGetText)
             ]
-        
+
         boolInput b =
           comboBoxBool [] (Just b) (Just $ onElemValueChange . LT.Bool)
+
+        doubleInput d =
+          doubleSpinner [] d (onElemValueChange . LT.Double)
+
+        intInput x =
+          integerSpinner [] True x (onElemValueChange . LT.Int)
 
         onElemTypeChange typePos =
           let newField =
@@ -134,7 +142,10 @@ tupleEntry' elems onChange =
                   0 -> LT.None
                   1 -> LT.Bytes ""
                   2 -> LT.Text ""
-                  3 -> LT.Bool False
+                  3 -> LT.Int 0
+                  4 -> LT.Float 0
+                  5 -> LT.Double 0
+                  6 -> LT.Bool False
                   _ -> error "invalid tuple element type position"
            in onChange $ setAt i newField elems
 
