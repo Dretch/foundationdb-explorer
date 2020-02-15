@@ -4,6 +4,7 @@ set -e
 
 DIR=.make-deb
 TAG=`git describe --tags` # will fail if there are no tags
+TAG=${TAG#"v"} # remove "v" prefix
 
 stack build
 rm -rf "$DIR"
