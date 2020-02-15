@@ -84,7 +84,7 @@ tupleEntry' elems onChange =
             ]
       where
         combo = comboBoxText []
-          ["None", "Bytes", "Text", "Int", "Float", "Double", "Bool"]
+          ["None", "Bytes", "Text", "Int", "Float", "Double", "Bool", "Tuple"]
           (Just position)
           (Just onElemTypeChange)
 
@@ -105,7 +105,7 @@ tupleEntry' elems onChange =
           LT.UUID _ _ _ _   -> (2, textInput "")
           LT.CompleteVS _   -> (2, textInput "")
           LT.IncompleteVS _ -> (2, textInput "")
-          LT.Tuple _        -> (2, textInput "")
+          LT.Tuple t        -> (7, tupleInput t)
 
         noneInput =
           widget Label []
@@ -139,6 +139,9 @@ tupleEntry' elems onChange =
         intInput x =
           integerSpinner [] True x (onElemValueChange . LT.Int)
 
+        tupleInput t =
+          tupleEntry' t (onElemValueChange . LT.Tuple)
+
         onElemTypeChange typePos =
           let newField =
                 case typePos of
@@ -149,6 +152,7 @@ tupleEntry' elems onChange =
                   4 -> LT.Float 0
                   5 -> LT.Double 0
                   6 -> LT.Bool False
+                  7 -> LT.Tuple []
                   _ -> error "invalid tuple element type position"
            in onChange $ setAt i newField elems
 
