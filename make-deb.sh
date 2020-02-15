@@ -3,6 +3,7 @@
 set -e
 
 DIR=.make-deb
+TAG=`git describe --tags` # will fail if there are no tags
 
 stack build
 rm -rf "$DIR"
@@ -12,7 +13,7 @@ cp  `stack path --local-install-root`/bin/foundationdb-explorer .
 
 fpm --input-type dir \
   --output-type deb \
-  --version 0.0.1 \
+  --version "$TAG" \
   --name foundationdb-explorer \
   --description 'Basic FoundationDB database browser' \
   --vendor '' \
