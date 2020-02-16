@@ -45,7 +45,7 @@ extra-deps:
     - "gi-gtk-declarative"
     - "gi-gtk-declarative-app-simple"
 - git: "https://github.com/crclark/foundationdb-haskell"
-  commit: "00551a5072be7fbfb04af078b51874462e7d905c"
+  commit: "6285712cb112dcbc1e0976426a05169d91bc33cc"
 
 
 # Override default flag values for local packages and extra-deps
