@@ -38,7 +38,7 @@ data SearchRange =
   SearchRange
     { searchFrom    :: Either Text [Elem]
     , searchTo      :: Either Text [Elem]
-    , searchLimit   :: Integer
+    , searchLimit   :: Word
     , searchReverse :: Bool
     }
 

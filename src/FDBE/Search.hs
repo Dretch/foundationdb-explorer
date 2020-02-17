@@ -50,7 +50,7 @@ import           FDBE.State                                  (Search (..),
                                                               SearchResultsViewFull (..),
                                                               maxKeyTupleSize,
                                                               maxValueTupleSize)
-import           FDBE.Widget.IntegerSpinner                  (integerSpinner)
+import           FDBE.Widget.IntegerSpinner                  (wordSpinner)
 import           FDBE.Widget.TupleEntry                      (tupleEntry)
 
 view' :: Search -> Widget Event
@@ -91,9 +91,8 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         { properties =
             defaultGridChildProperties {topAttach = 2, leftAttach = 1}
         , child =
-            integerSpinner
+            wordSpinner
               [#sensitive := activateInputs]
-              False
               searchLimit
               (\v -> SetSearchRange searchRange { searchLimit = v })
         }

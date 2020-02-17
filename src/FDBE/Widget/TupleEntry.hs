@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE OverloadedLabels    #-}
 {-# LANGUAGE OverloadedLists     #-}
 {-# LANGUAGE OverloadedStrings   #-}
@@ -17,6 +20,9 @@ import qualified Data.Vector                as Vector
 import           Data.Word                  (Word32)
 import           FoundationDB.Layer.Tuple   (Elem)
 import qualified FoundationDB.Layer.Tuple   as LT
+import           FoundationDB.Versionstamp  (TransactionVersionstamp (..),
+                                             Versionstamp (..),
+                                             VersionstampCompleteness (..))
 import           GI.Gdk                     (EventFocus)
 import           GI.Gtk                     (Align (..), Box (..), Button (..),
                                              Entry (..), Label (..),
@@ -28,7 +34,8 @@ import           FDBE.Bytes                 (bytesToText, textToBytes)
 import           FDBE.Widget.ComboBoxBool   (comboBoxBool)
 import           FDBE.Widget.ComboBoxText   (comboBoxText)
 import           FDBE.Widget.DoubleSpinner  (doubleSpinner)
-import           FDBE.Widget.IntegerSpinner (integerSpinner)
+import           FDBE.Widget.IntegerSpinner (integerSpinner, word16Spinner,
+                                             word64Spinner)
 
 tupleEntry
   :: Either Text [Elem]
@@ -88,7 +95,7 @@ tupleEntry' elems onChange =
             ]
       where
         combo = comboBoxText []
-          ["None", "Bytes", "Text", "Int", "Float", "Double", "Bool", "UUID", "Tuple"]
+          ["None", "Bytes", "Text", "Int", "Float", "Double", "Bool", "UUID", "Versionstamp", "Tuple"]
           (Just position)
           (Just onElemTypeChange)
 
@@ -102,14 +109,14 @@ tupleEntry' elems onChange =
           LT.None           -> (0, noneInput)
           LT.Bytes bs       -> (1, bytesInput bs)
           LT.Text t         -> (2, textInput t)
-          LT.Int x          -> (3, intInput x)
+          LT.Int x          -> (3, intInput $ fromIntegral x)
           LT.Float f        -> (4, floatInput f)
           LT.Double d       -> (5, doubleInput d)
           LT.Bool b         -> (6, boolInput b)
           LT.UUID a b c d   -> (7, uuidInput a b c d)
-          LT.CompleteVS _   -> (2, textInput "")
-          LT.IncompleteVS _ -> (2, textInput "")
-          LT.Tuple t        -> (8, tupleInput t)
+          LT.CompleteVS vs  -> (8, completeVsInput vs)
+          LT.IncompleteVS _ -> (8, completeVsInput minBound)
+          LT.Tuple t        -> (9, tupleInput t)
 
         onElemTypeChange typePos =
           let newField =
@@ -122,7 +129,8 @@ tupleEntry' elems onChange =
                   5 -> LT.Double 0
                   6 -> LT.Bool False
                   7 -> LT.UUID 0 0 0 0
-                  8 -> LT.Tuple []
+                  8 -> LT.CompleteVS minBound
+                  9 -> LT.Tuple []
                   _ -> error "invalid tuple element type position"
             in onChange $ setAt i newField elems
 
@@ -156,7 +164,7 @@ tupleEntry' elems onChange =
           doubleSpinner [] d (onElemValueChange . LT.Double)
 
         intInput x =
-          integerSpinner [] True x (onElemValueChange . LT.Int)
+          integerSpinner [] x (onElemValueChange . LT.Int)
 
         uuidInput :: Word32 -> Word32 -> Word32 -> Word32 -> Widget event
         uuidInput a b c d =
@@ -178,6 +186,35 @@ tupleEntry' elems onChange =
                   #setText entry $ UUID.toText uuid
                   pure uuid
               pure (False, onElemValueChange . uncurry4 LT.UUID . UUID.toWords $ newUuid)
+
+        completeVsInput :: Versionstamp 'Complete -> Widget event
+        completeVsInput (CompleteVersionstamp (TransactionVersionstamp tx batch) usr) =
+          container Box [#spacing := 4]
+            [ label "Tx:"
+            , spin $ word64Spinner
+                []
+                tx
+                (onElemValueChange . LT.CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch)
+            , label "Batch:"
+            , spin $ word16Spinner
+                []
+                batch
+                (onElemValueChange . LT.CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx)
+            , label "User:"
+            , spin $ word16Spinner
+                []
+                usr
+                (onElemValueChange . LT.CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch))
+            ]
+            where
+              label t = BoxChild
+                { properties = defaultBoxChildProperties
+                , child = widget Label [#label := t]
+                }
+              spin child = BoxChild
+                { properties = defaultBoxChildProperties { expand = True, fill = True }
+                , child
+                }
 
         tupleInput t =
           tupleEntry' t (onElemValueChange . LT.Tuple)
