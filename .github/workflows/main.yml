@@ -8,10 +8,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    
+
     - uses: actions/checkout@v2
 
     - uses: mstksg/setup-stack@v2
+
+    - run: docker build docker -t foundationdb-explorer:latest
     
     - uses: actions/cache@v1
       with:

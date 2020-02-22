@@ -39,10 +39,6 @@ packages:
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- time-1.9.3
-- directory-1.3.6.0@sha256:d3d89c752f99e78f3e1d11c74696d2ba78b199f47c89e92934003deb84cb3ff9,2810
-- process-1.6.8.0@sha256:0ef84bdacd2dcdfb3924827cfdd76a276d3402e5de569a1a7b4d3d0786b18251,2468
-- unix-2.7.2.2@sha256:e69269a17b9fa26cb77f3f55e86c39d0a4940ccfa0c4bc20826919d2572076ad,3496
 - git: "https://github.com/Dretch/gi-gtk-declarative.git"
   commit: "7b2b69ac791dbd91df320700fbe41bdefe6e22f6"
   subdirs:
@@ -75,3 +71,7 @@ extra-deps:
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+
+docker:
+  enable: false
+  image: foundationdb-explorer:latest
