@@ -8,6 +8,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    
     - uses: actions/checkout@v2
+
     - uses: mstksg/setup-stack@v2
-    - run: stack test
+    
+    - uses: actions/cache@v1
+      with:
+        key: stack
+        path: ~/.stack
+    
+    - uses: actions/cache@v1
+      with:
+        key: stack-work
+        path: .stack-work
+    
+    - run: stack test --docker
