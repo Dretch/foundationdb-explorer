@@ -8,6 +8,7 @@ dependencies:
 - bytestring
 - containers
 - data-default-class
+- deepseq
 - errors
 - extra
 - file-embed

@@ -9,10 +9,11 @@ module FDBE.FoundationDB
   , getSearchResult
   ) where
 
+import           Control.DeepSeq          (force)
 import           Control.Error.Util       (hush)
-import           Control.Exception        (try)
+import           Control.Exception        (evaluate, try)
+import           Control.Monad.IO.Class   (liftIO)
 import           Data.ByteString          (ByteString)
-import           Data.Maybe               (fromMaybe)
 import           Data.Sequence            (Seq)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
@@ -38,24 +39,28 @@ getClusterFilePath db = do
 getStatus :: Database -> IO Text
 getStatus db = do
   clusterFilePath <- getClusterFilePath db
-  let cArgs = fromMaybe [] ((\p -> ["-C", T.unpack p]) <$> clusterFilePath)
+  let cArgs = maybe [] (\p -> ["-C", T.unpack p]) clusterFilePath
   T.pack <$> P.readProcess "fdbcli" (cArgs <> ["--exec", "status"]) ""
 
-getSearchResult ::
-     Database
+getSearchResult
+  :: Database
   -> SearchRange
   -> IO (Either Error (NominalDiffTime, Seq SearchResult))
 getSearchResult db SearchRange {..} = do
   try $ do
     startTime <- Clock.getCurrentTime
-    rows <-
-      FDB.runTransaction db $ do
-        let range = FDB.keyRange (selectorToBytes searchFrom) (selectorToBytes searchTo)
-            rangeLimit = Just $ fromIntegral searchLimit
-        pairs <- FDB.getEntireRange range {rangeLimit, rangeReverse = searchReverse }
-        pure $ uncurry SearchResult . both decode <$> pairs
+    pairs <- FDB.runTransaction db $ FDB.getEntireRange range
+    -- force decoding here, so it gets included in the timed duration
+    decodedPairs <- liftIO . evaluate . force $ both decode <$> pairs
     endTime <- Clock.getCurrentTime
-    pure (Clock.diffUTCTime endTime startTime, rows)
+    pure (Clock.diffUTCTime endTime startTime, uncurry SearchResult <$> decodedPairs)
+  where
+    range = Range
+      { rangeBegin   = FDB.FirstGreaterOrEq $ selectorToBytes searchFrom
+      , rangeEnd     = FDB.FirstGreaterOrEq $ selectorToBytes searchTo
+      , rangeReverse = searchReverse
+      , rangeLimit   = Just $ fromIntegral searchLimit
+      }
 
 selectorToBytes :: Either Text [Elem] -> ByteString
 selectorToBytes = either textToBytes encodeTupleElems
