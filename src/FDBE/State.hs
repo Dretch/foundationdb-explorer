@@ -23,9 +23,10 @@ import           FoundationDB.Layer.Tuple (Elem)
 
 data State =
   State
-    { database :: Database
-    , status   :: Text
-    , search   :: Search
+    { database      :: Database
+    , status        :: Text
+    , statusVisible :: Bool
+    , search        :: Search
     }
 
 data Search =
@@ -72,6 +73,7 @@ initialState database =
   State
     { database
     , status = ""
+    , statusVisible = False
     , search =
         Search
           { searchRange =

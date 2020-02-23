@@ -8,7 +8,9 @@ import           Data.Time.Clock (NominalDiffTime)
 import           FDBE.State      (SearchRange, SearchResult, SearchResultsViewFull)
 
 data Event
-  = ReloadStatus
+  = ShowStatus
+  | HideStatus
+  | ReloadStatus
   | SetStatus Text
   | SetSearchRange SearchRange
   | StartSearch

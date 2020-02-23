@@ -11,56 +11,84 @@ module FDBE.App
   , app
   ) where
 
-import           Control.Concurrent                    (threadDelay)
-import           Control.Exception                     (displayException)
-import           Data.Time.Clock                       (getCurrentTime)
-import           Data.Either.Extra                     (mapLeft)
-import           Data.Text                             (pack)
-import           FoundationDB                          (Database)
-import           GI.Gtk                                (Align (..), Label (..),
-                                                        Window (..), WindowPosition (..))
+import           Control.Concurrent                          (threadDelay)
+import           Control.Exception                           (displayException)
+import           Data.Either.Extra                           (mapLeft)
+import           Data.Text                                   (Text, pack)
+import           Data.Time.Clock                             (getCurrentTime)
+import           FoundationDB                                (Database)
+import           GI.Gtk                                      (Align (..),
+                                                              Box (..),
+                                                              Label (..),
+                                                              MenuBar (..),
+                                                              MenuItem (..),
+                                                              Orientation (..),
+                                                              Window (..),
+                                                              WindowPosition (..))
 import           GI.Gtk.Declarative
 import           GI.Gtk.Declarative.App.Simple
-import           Pipes                                 (yield)
-import           Pipes.Prelude                         (repeatM)
+import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
+import           Pipes                                       (yield)
+import           Pipes.Prelude                               (repeatM)
 
-import           GI.Gtk.Declarative.Container.Notebook (notebook, page)
-
-import           FDBE.Event                            (Event (..))
-import           FDBE.FoundationDB                     (getSearchResult,
-                                                        getStatus)
-import qualified FDBE.Search                           as Search
-import           FDBE.State                            (Search (..),
-                                                        SearchResults (..),
-                                                        SearchResultsViewFull (..),
-                                                        State (..))
-import qualified FDBE.State                            as State
+import           FDBE.Event                                  (Event (..))
+import           FDBE.FoundationDB                           (getSearchResult,
+                                                              getStatus)
+import qualified FDBE.Search                                 as Search
+import           FDBE.State                                  (Search (..),
+                                                              SearchResults (..),
+                                                              SearchResultsViewFull (..),
+                                                              State (..))
+import qualified FDBE.State                                  as State
 
 view' :: State -> AppView Window Event
 view' State {..} =
   bin
     Window
-    [ #title := "FoundationDB Explorer"
+    ([ #title := "FoundationDB Explorer"
     , on #deleteEvent $ const (True, Close)
-    , #widthRequest := 500
+    , #widthRequest := 800
+    , #heightRequest := 800
     , #windowPosition := WindowPositionCenter
-    ] $
-  notebook
-    []
-    [ page "Search" $ Search.view' search
-    , page "Status" $
-      widget
-        Label
-        [ #label := status
-        , classes ["status"]
-        , #margin := 10
-        , #halign := AlignStart
-        , #valign := AlignStart
+    ] <> windowAttrs) $
+  container
+    Box
+    [#orientation := OrientationVertical]
+    [ container MenuBar []
+        [ menuItem MenuItem [on #activate ShowStatus]
+          $ widget Label [#label := "Status"]
         ]
+    , BoxChild
+        { properties = defaultBoxChildProperties { fill = True, expand = True }
+        , child = Search.view' search
+        }
+    ]
+  where
+    windowAttrs
+      | statusVisible = [statusWindow status]
+      | otherwise     = []
+
+statusWindow :: Text -> Attribute w Event
+statusWindow status = window $ bin Window
+  [ #title := "Database Status"
+  , on #deleteEvent (const (True, HideStatus))
+  , #windowPosition := WindowPositionCenter
+  ] $
+  widget
+    Label
+    [ #label := status
+    , classes ["status"]
+    , #margin := 10
+    , #halign := AlignStart
+    , #valign := AlignStart
     ]
 
 update' :: State -> Event -> Transition State Event
 update' state@State {..} = \case
+  ShowStatus ->
+    Transition state { statusVisible = True } (pure Nothing)
+  HideStatus ->
+    Transition state { statusVisible = False } (pure Nothing)
   ReloadStatus ->
     Transition state $ (Just . SetStatus) <$> getStatus database
   SetStatus status' ->
