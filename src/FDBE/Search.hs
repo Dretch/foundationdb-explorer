@@ -17,6 +17,7 @@ import           Data.Maybe                                  (fromMaybe)
 import qualified Data.Sequence                               as S
 import           Data.Text                                   (Text)
 import qualified Data.Text                                   as T
+import           Data.Time.Clock                             (getCurrentTime)
 import qualified Data.UUID                                   as UUID
 import           Data.Vector                                 (Vector)
 import qualified Data.Vector                                 as Vector
@@ -273,7 +274,7 @@ resultLabel rowN label tooltip =
             (widget Button
               [ #label := "..."
               , #tooltipText := "View full value"
-              , on #clicked (SetSearchResultsViewFullPre label)
+              , onM #clicked onViewFullClicked
               ])
         ]
   where
@@ -286,6 +287,11 @@ resultLabel rowN label tooltip =
     cls
       | rowN `mod` 2 == 0 = ["result-cell", "result-cell-stripe"]
       | otherwise = ["result-cell"]
+    onViewFullClicked _button = do
+      viewFullTime <- getCurrentTime
+      pure
+        $ SetSearchResultsViewFull
+        $ Just SearchResultsViewFull { viewFullTime, viewFullText = label }
 
 statusbar :: SearchResults -> Widget Event
 statusbar res = widget Label [#label := label, #halign := AlignStart]
