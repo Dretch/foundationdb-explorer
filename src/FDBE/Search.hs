@@ -43,7 +43,8 @@ import           GI.Gtk.Declarative.Container.Grid
 import           Text.Printf                                 (printf)
 
 import           FDBE.Bytes                                  (bytesToText)
-import           FDBE.Event                                  (Event (..))
+import           FDBE.Event                                  (Event (..),
+                                                              SearchEvent (..))
 import           FDBE.State                                  (Search (..),
                                                               SearchRange (..),
                                                               SearchResult (..),
@@ -71,7 +72,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
     , GridChild
         { properties = defaultGridChildProperties {leftAttach = 1}
         , child =
-            tupleEntry searchFrom activateInputs (\s -> SetSearchRange searchRange {searchFrom = s})
+            tupleEntry searchFrom activateInputs (\s -> SearchEvent $ SetSearchRange searchRange {searchFrom = s})
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 1}
@@ -82,7 +83,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         { properties =
             defaultGridChildProperties {topAttach = 1, leftAttach = 1}
         , child =
-            tupleEntry searchTo activateInputs (\s -> SetSearchRange searchRange {searchTo = s})
+            tupleEntry searchTo activateInputs (\s -> SearchEvent $ SetSearchRange searchRange {searchTo = s})
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 2}
@@ -95,7 +96,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
             wordSpinner
               [#sensitive := activateInputs]
               searchLimit
-              (\v -> SetSearchRange searchRange { searchLimit = v })
+              (\v -> SearchEvent $ SetSearchRange searchRange { searchLimit = v })
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 3, leftAttach = 1}
@@ -104,7 +105,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
               [ #label := "Reverse Order"
               , #active := searchReverse
               , #sensitive := activateInputs
-              , onM #toggled (fmap (\b -> SetSearchRange searchRange { searchReverse = b }) . #getActive)
+              , onM #toggled (fmap (\b -> SearchEvent $ SetSearchRange searchRange { searchReverse = b }) . #getActive)
               ]
         }
     , GridChild
@@ -114,7 +115,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
               Button
               [ #label := "Fetch"
               , #halign := AlignEnd
-              , on #clicked StartSearch
+              , on #clicked (SearchEvent StartSearch)
               , #sensitive := activateInputs
               ]
         }
@@ -142,7 +143,7 @@ windows = \case
         , #heightRequest := 400
         , #windowPosition := WindowPositionCenter
         , #title := "View full text"
-        , on #deleteEvent (const (True, SetSearchResultsViewFull Nothing))
+        , on #deleteEvent (const (True, SearchEvent $ SetSearchResultsViewFull Nothing))
         , presentWindow viewFullTime
         ]
         (bin ScrolledWindow
@@ -290,6 +291,7 @@ resultLabel rowN label tooltip =
     onViewFullClicked _button = do
       viewFullTime <- getCurrentTime
       pure
+        $ SearchEvent
         $ SetSearchResultsViewFull
         $ Just SearchResultsViewFull { viewFullTime, viewFullText = label }
 

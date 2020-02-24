@@ -30,7 +30,9 @@ import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
 import           Pipes                                       (yield)
 import           Pipes.Prelude                               (repeatM)
 
-import           FDBE.Event                                  (Event (..))
+import           FDBE.Event                                  (Event (..),
+                                                              SearchEvent (..),
+                                                              StatusEvent (..))
 import           FDBE.FoundationDB                           (getSearchResult,
                                                               getStatus)
 import qualified FDBE.Search                                 as Search
@@ -53,7 +55,7 @@ view' State {..} =
     Box
     [#orientation := OrientationVertical]
     [ container MenuBar []
-        [ menuItem MenuItem [on #activate ShowStatus]
+        [ menuItem MenuItem [on #activate (StatusEvent ShowStatus)]
           $ widget Label [#label := "Status"]
         ]
     , BoxChild
@@ -69,7 +71,7 @@ view' State {..} =
 statusWindow :: Text -> Attribute w Event
 statusWindow status = window $ bin Window
   [ #title := "Database Status"
-  , on #deleteEvent (const (True, HideStatus))
+  , on #deleteEvent (const (True, StatusEvent HideStatus))
   , #windowPosition := WindowPositionCenter
   ] $
   widget
@@ -83,29 +85,34 @@ statusWindow status = window $ bin Window
 
 update' :: State -> Event -> Transition State Event
 update' state@State {..} = \case
-  ShowStatus ->
-    Transition state { statusVisible = True } (pure Nothing)
-  HideStatus ->
-    Transition state { statusVisible = False } (pure Nothing)
-  ReloadStatus ->
-    Transition state $ (Just . SetStatus) <$> getStatus database
-  SetStatus status' ->
-    Transition state {status = status'} (pure Nothing)
-  SetSearchRange range ->
-    Transition state {search = search {searchRange = range}} (pure Nothing)
-  StartSearch ->
-    Transition state {search = search {searchResults = SearchInProgress}} $ do
-      res <- getSearchResult database (searchRange search)
-      pure . Just . FinishSearch $ mapLeft (pack . displayException) res
-  FinishSearch results ->
-    let mkSuccess = \(searchResultsDuration, searchResultsSeq) ->
-          SearchSuccess{searchResultsViewFull = Nothing, ..}
-        searchResults = either SearchFailure mkSuccess results
-     in Transition state {search = search {searchResults}} (pure Nothing)
-  SetSearchResultsViewFull searchResultsViewFull ->
-    Transition state {search = search { searchResults = (searchResults search) {searchResultsViewFull}}} (pure Nothing)
-  Close ->
-    Exit
+  StatusEvent e -> updateStatus e
+  SearchEvent e -> updateSearch e
+  Close         -> Exit
+  where
+    updateStatus = \case
+      ShowStatus ->
+        Transition state { statusVisible = True } (pure Nothing)
+      HideStatus ->
+        Transition state { statusVisible = False } (pure Nothing)
+      ReloadStatus ->
+        Transition state $ (Just . StatusEvent . SetStatus) <$> getStatus database
+      SetStatus status' ->
+        Transition state {status = status'} (pure Nothing)
+
+    updateSearch = \case
+      SetSearchRange range ->
+        Transition state {search = search {searchRange = range}} (pure Nothing)
+      StartSearch ->
+        Transition state {search = search {searchResults = SearchInProgress}} $ do
+          res <- getSearchResult database (searchRange search)
+          pure . Just . SearchEvent . FinishSearch $ mapLeft (pack . displayException) res
+      FinishSearch results ->
+        let mkSuccess = \(searchResultsDuration, searchResultsSeq) ->
+              SearchSuccess{searchResultsViewFull = Nothing, ..}
+            searchResults = either SearchFailure mkSuccess results
+        in Transition state {search = search {searchResults}} (pure Nothing)
+      SetSearchResultsViewFull searchResultsViewFull ->
+        Transition state {search = search { searchResults = (searchResults search) {searchResultsViewFull}}} (pure Nothing)
 
 app :: Database -> App Window State Event
 app db =
@@ -117,7 +124,7 @@ app db =
     }
   where
     reloadStatusPeriodically = do
-      yield ReloadStatus
+      yield $ StatusEvent ReloadStatus
       repeatM $ do
         threadDelay $ 5 * 1000 * 1000
-        pure ReloadStatus
+        pure $ StatusEvent ReloadStatus
