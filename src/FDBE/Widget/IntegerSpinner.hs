@@ -25,12 +25,10 @@ integerSpinner
   -> Integer
   -> (Integer -> event)
   -> Widget event
-integerSpinner attrs value onChange =
+integerSpinner attrs =
   spinner
     attrs
     (IntegerSpinnerProperties min max)
-    value
-    onChange
   where
     min = fromIntegral (minBound :: Int)
     max = fromIntegral (maxBound :: Int)
@@ -105,11 +103,11 @@ instance CustomAttribute Gtk.SpinButton IntegerSpinner where
     pure IntegerSpinnerState
 
   attrPatch spin state (IntegerSpinner props1 value1) (IntegerSpinner props2 value2) = do
-    if props1 /= props2 then do
+    if props1 /= props2 then
       setLimits spin value2 props2
-    else if value2 /= value1 then do
+    else if value2 /= value1 then
       void . Gtk.spinButtonSetValue spin $ fromIntegral value2
-    else do
+    else
       pure ()
     pure state
 
