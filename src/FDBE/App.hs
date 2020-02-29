@@ -95,7 +95,7 @@ update' state@State {..} = \case
       HideStatus ->
         Transition state { statusVisible = False } (pure Nothing)
       ReloadStatus ->
-        Transition state $ (Just . StatusEvent . SetStatus) <$> getStatus database
+        Transition state $ Just . StatusEvent . SetStatus <$> getStatus database
       SetStatus status' ->
         Transition state {status = status'} (pure Nothing)
 
@@ -107,7 +107,7 @@ update' state@State {..} = \case
           res <- getSearchResult database (searchRange search)
           pure . Just . SearchEvent . FinishSearch $ mapLeft (pack . displayException) res
       FinishSearch results ->
-        let mkSuccess = \(searchResultsDuration, searchResultsSeq) ->
+        let mkSuccess (searchResultsDuration, searchResultsSeq) =
               SearchSuccess{searchResultsViewFull = Nothing, ..}
             searchResults = either SearchFailure mkSuccess results
         in Transition state {search = search {searchResults}} (pure Nothing)
