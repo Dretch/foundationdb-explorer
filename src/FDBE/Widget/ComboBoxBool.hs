@@ -1,24 +1,29 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module FDBE.Widget.ComboBoxBool
-  ( comboBoxBool
+  ( ComboBoxAttribute(..)
+  , comboBox
   ) where
 
-import           Data.Bool                (bool)
 import           Data.Vector              (Vector)
+import qualified Data.Vector              as Vector
 import qualified GI.Gtk                   as Gtk
 import           GI.Gtk.Declarative
 
-import           FDBE.Widget.ComboBoxText (comboBoxText)
+import qualified FDBE.Widget.ComboBoxText as ComboBoxText
 
-comboBoxBool
-  :: Vector (Attribute Gtk.ComboBoxText event)
-  -> Maybe Bool
-  -> Maybe (Bool -> event)
-  -> Widget event
-comboBoxBool attrs value onChange =
-  comboBoxText
-    attrs
-    ["False", "True"]
-    (bool 0 1 <$> value)
-    ((. (/= 0)) <$> onChange)
+data ComboBoxAttribute event
+  = RawAttribute (Attribute Gtk.ComboBoxText event)
+  | Position Bool
+  | OnChanged (Bool -> event)
+
+comboBox :: Vector (ComboBoxAttribute event) -> Widget event
+comboBox attrs =
+  ComboBoxText.comboBox $
+    (mapAttr <$> attrs) `Vector.snoc` ComboBoxText.Choices ["False", "True"]
+  where
+    mapAttr = \case
+      RawAttribute a -> ComboBoxText.RawAttribute a
+      Position b     -> ComboBoxText.Position $ if b then 1 else 0
+      OnChanged f    -> ComboBoxText.OnChanged $ f . (/= 0)

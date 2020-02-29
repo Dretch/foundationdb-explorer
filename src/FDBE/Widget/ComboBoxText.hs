@@ -1,34 +1,48 @@
 {-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE OverloadedLabels      #-}
 {-# LANGUAGE OverloadedLists       #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 -- | A combobox that allow choosing some text from a number of options.
-module FDBE.Widget.ComboBoxText (comboBoxText) where
+module FDBE.Widget.ComboBoxText
+  ( ComboBoxAttribute(..)
+  , comboBox
+  ) where
 
 import           Control.Monad      (forM_, when)
 import           Data.Text          (Text)
 import           Data.Vector        (Vector)
+import qualified Data.Vector        as Vector
 import qualified GI.Gtk             as Gtk
 import           GI.Gtk.Declarative
 
-comboBoxText
-  :: Vector (Attribute Gtk.ComboBoxText event)
-  -> [Text]
-  -> Maybe Int
-  -> Maybe (Int -> event)
-  -> Widget event
-comboBoxText attrs choices position listener =
-  widget Gtk.ComboBoxText
-   $ attrs <> listenerAttr <> [customAttribute $ ComboBoxText choices position]
+data ComboBoxAttribute event
+  = RawAttribute (Attribute Gtk.ComboBoxText event)
+  | Choices [Text]
+  | Position Int
+  | OnChanged (Int -> event)
+
+comboBox :: Vector (ComboBoxAttribute event) -> Widget event
+comboBox attrs =
+  widget Gtk.ComboBoxText $
+    Vector.fromList rawAttrs `Vector.snoc` customAttribute comboBoxText
   where
-    listenerAttr
-      | Just h <- listener =
-        [onM #changed (fmap (h . fromIntegral) . #getActive)]
-      | otherwise =
-        []
+    (comboBoxText, rawAttrs) = foldl go (defaultComboBoxText, []) attrs
+    go (comboBoxText', attrs') = \case
+      RawAttribute a  -> (comboBoxText', a : attrs')
+      Choices choices -> (comboBoxText' { choices }, attrs')
+      Position p      -> (comboBoxText' { position = Just p }, attrs')
+      OnChanged f     -> (comboBoxText', onM changed (fmap (f . fromIntegral) . #getActive) : attrs')
+    defaultComboBoxText = ComboBoxText
+      { choices = []
+      , position = Nothing
+      }
+    changed =
+      #changed :: Gtk.SignalProxy Gtk.ComboBoxText Gtk.ComboBoxChangedSignalInfo
 
 data ComboBoxText event = ComboBoxText
   { choices  :: [Text]
@@ -51,7 +65,7 @@ instance CustomAttribute Gtk.ComboBoxText ComboBoxText where
     when choiceChange $ do
       #removeAll combo
       forM_ (choices new) (#appendText combo)
-    when (choiceChange || positionChange) $ do
+    when (choiceChange || positionChange) $
       updatePos combo (position new)
     pure state
 

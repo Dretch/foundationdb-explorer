@@ -52,8 +52,8 @@ import           FDBE.State                                  (Search (..),
                                                               SearchResultsViewFull (..),
                                                               maxKeyTupleSize,
                                                               maxValueTupleSize)
-import           FDBE.Widget.IntegerSpinner                  (wordSpinner)
-import           FDBE.Widget.TupleEntry                      (tupleEntry)
+import qualified FDBE.Widget.IntegerSpinner                  as IntegerSpinner
+import qualified FDBE.Widget.TupleEntry                      as TupleEntry
 
 view' :: Search -> Widget Event
 view' Search {searchRange = searchRange@SearchRange {..}, ..} =
@@ -72,7 +72,11 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
     , GridChild
         { properties = defaultGridChildProperties {leftAttach = 1}
         , child =
-            tupleEntry searchFrom activateInputs (\s -> SearchEvent $ SetSearchRange searchRange {searchFrom = s})
+            TupleEntry.tupleEntry
+              [ TupleEntry.RawAttribute $ #sensitive := activateInputs
+              , TupleEntry.Value searchFrom
+              , TupleEntry.OnChanged (\s -> SearchEvent $ SetSearchRange searchRange {searchFrom = s})
+              ]
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 1}
@@ -83,7 +87,11 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         { properties =
             defaultGridChildProperties {topAttach = 1, leftAttach = 1}
         , child =
-            tupleEntry searchTo activateInputs (\s -> SearchEvent $ SetSearchRange searchRange {searchTo = s})
+          TupleEntry.tupleEntry
+              [ TupleEntry.RawAttribute $ #sensitive := activateInputs
+              , TupleEntry.Value searchTo
+              , TupleEntry.OnChanged (\s -> SearchEvent $ SetSearchRange searchRange {searchTo = s})
+              ]
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 2}
@@ -93,10 +101,11 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         { properties =
             defaultGridChildProperties {topAttach = 2, leftAttach = 1}
         , child =
-            wordSpinner
-              [#sensitive := activateInputs]
-              searchLimit
-              (\v -> SearchEvent $ SetSearchRange searchRange { searchLimit = v })
+            IntegerSpinner.spinner
+              [ IntegerSpinner.RawAttribute (#sensitive := activateInputs)
+              , IntegerSpinner.Value searchLimit
+              , IntegerSpinner.OnChanged (\v -> SearchEvent $ SetSearchRange searchRange { searchLimit = v })
+              ]
         }
     , GridChild
         { properties = defaultGridChildProperties {topAttach = 3, leftAttach = 1}

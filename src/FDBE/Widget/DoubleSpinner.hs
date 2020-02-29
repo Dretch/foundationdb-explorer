@@ -1,29 +1,38 @@
 {-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedLabels      #-}
 {-# LANGUAGE OverloadedLists       #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module FDBE.Widget.DoubleSpinner (doubleSpinner) where
+module FDBE.Widget.DoubleSpinner
+  ( SpinnerAttribute(..)
+  , spinner
+  ) where
 
 import           Control.Monad      (void, when)
 import           Data.Vector        (Vector)
+import qualified Data.Vector        as Vector
 import qualified GI.Gtk             as Gtk
 import           GI.Gtk.Declarative
 
-doubleSpinner
-  :: Vector (Attribute Gtk.SpinButton event)
-  -> Double
-  -> (Double -> event)
-  -> Widget event
-doubleSpinner attrs value onChange =
-  widget Gtk.SpinButton
-    $ attrs <> [listener, customAttribute $ DoubleSpinner value]
-  where
-    listener =
-      onM #valueChanged (fmap onChange . #getValue)
+data SpinnerAttribute event
+  = RawAttribute (Attribute Gtk.SpinButton event)
+  | Value Double
+  | OnChanged (Double -> event)
 
-data DoubleSpinner event = DoubleSpinner Double
+spinner :: Vector (SpinnerAttribute event) -> Widget event
+spinner attrs =
+  widget Gtk.SpinButton $
+    Vector.fromList rawAttrs `Vector.snoc` customAttribute (DoubleSpinner value)
+  where
+    (value, rawAttrs) = foldl go (0, []) attrs
+    go (value', attrs') = \case
+      RawAttribute a -> (value', a : attrs')
+      Value x        -> (x, attrs')
+      OnChanged f    -> (value', onM #valueChanged (fmap f . #getValue) : attrs')
+
+newtype DoubleSpinner event = DoubleSpinner Double
   deriving (Functor)
 
 instance CustomAttribute Gtk.SpinButton DoubleSpinner where
@@ -38,7 +47,7 @@ instance CustomAttribute Gtk.SpinButton DoubleSpinner where
     pure DoubleSpinnerState
 
   attrPatch spin state (DoubleSpinner old) (DoubleSpinner new) = do
-    when (old /= new) $ do
+    when (old /= new) $
       void $ Gtk.spinButtonSetValue spin new
     pure state
 
