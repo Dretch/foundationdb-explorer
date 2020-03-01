@@ -111,8 +111,12 @@ update' state@State {..} = \case
               SearchSuccess{searchResultsViewFull = Nothing, ..}
             searchResults = either SearchFailure mkSuccess results
         in Transition state {search = search {searchResults}} (pure Nothing)
-      SetSearchResultsViewFull searchResultsViewFull ->
-        Transition state {search = search { searchResults = (searchResults search) {searchResultsViewFull}}} (pure Nothing)
+      SetSearchResultsViewFull viewFull ->
+        case searchResults search of
+          SearchSuccess {..} ->
+            Transition state {search = search { searchResults = SearchSuccess {searchResultsViewFull = viewFull, ..}}} (pure Nothing)
+          _ ->
+            Transition state (pure Nothing)
 
 app :: Database -> App Window State Event
 app db =
