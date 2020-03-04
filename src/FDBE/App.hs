@@ -60,10 +60,13 @@ view' State {..} =
     Box
     [#orientation := OrientationVertical]
     [ container MenuBar []
-        [ menuItem MenuItem [on #activate (StatusEvent ShowStatus)]
-           $ widget Label [#label := "Status"]
-        , menuItem MenuItem [on #activate (KeyWindowEvent NewKeyWindow)]
-           $ widget Label [#label := "Edit"]
+        [ subMenu
+            "Foundation DB"
+            [ menuItem MenuItem [on #activate (StatusEvent ShowStatus)]
+                $ widget Label [#label := "Database Status", #halign := AlignStart]
+            , menuItem MenuItem [on #activate (KeyWindowEvent NewKeyWindow)]
+                $ widget Label [#label := "Edit Value at Key", #halign := AlignStart]
+            ]
         ]
     , BoxChild
         { properties = defaultBoxChildProperties { fill = True, expand = True }
