@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
@@ -7,6 +5,7 @@ module FDBE.FoundationDB
   ( getClusterFilePath
   , getStatus
   , getSearchResult
+  , getKeyValue
   ) where
 
 import           Control.DeepSeq          (force)
@@ -27,11 +26,12 @@ import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems,
                                            encodeTupleElems)
 import qualified System.Process           as P
 
-import           FDBE.Bytes               (textToBytes)
-import           FDBE.State               (SearchRange (..), SearchResult (..))
+import           FDBE.Bytes               (textToBytes, bytesToText)
+import           FDBE.State               (EditableBytes, SearchRange (..),
+                                           SearchResult (..))
 
 getClusterFilePath :: Database -> IO (Maybe Text)
-getClusterFilePath db = do
+getClusterFilePath db =
   FDB.runTransaction db $ do
     maybePath <- FDB.get "\xFF\xFF/cluster_file_path" >>= FDB.await
     pure $ fmap decodeUtf8 maybePath
@@ -46,7 +46,7 @@ getSearchResult
   :: Database
   -> SearchRange
   -> IO (Either Error (NominalDiffTime, Seq SearchResult))
-getSearchResult db SearchRange {..} = do
+getSearchResult db SearchRange {..} =
   try $ do
     startTime <- Clock.getCurrentTime
     pairs <- FDB.runTransaction db $ FDB.getEntireRange range
@@ -62,8 +62,20 @@ getSearchResult db SearchRange {..} = do
       , rangeLimit   = Just $ fromIntegral searchLimit
       }
 
-selectorToBytes :: Either Text [Elem] -> ByteString
+selectorToBytes :: EditableBytes -> ByteString
 selectorToBytes = either textToBytes encodeTupleElems
 
 decode :: ByteString -> (ByteString, Maybe [Elem])
 decode b = (b, hush $ decodeTupleElems b)
+
+getKeyValue :: Database -> EditableBytes -> IO (Either Error (Maybe EditableBytes))
+getKeyValue db key =
+  try $ do
+    val <- FDB.runTransaction db $ FDB.get (selectorToBytes key) >>= FDB.await
+    case val of
+      Nothing ->
+        pure Nothing
+      Just bs | Right tup <- decodeTupleElems bs ->
+        pure . Just $ Right tup
+      Just bs ->
+        pure . Just . Left $ bytesToText bs

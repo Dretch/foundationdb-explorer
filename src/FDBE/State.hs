@@ -2,13 +2,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module FDBE.State
-  ( State(..)
+  ( EditableBytes
+  , State(..)
   , Search(..)
   , SearchRange(..)
   , SearchResults(..)
   , SearchResult(..)
   , SearchResultsViewFull(..)
+  , KeyWindow(..)
   , initialState
+  , initialKeyWindow
   , maxKeyTupleSize
   , maxValueTupleSize
   ) where
@@ -27,7 +30,13 @@ data State =
     , status        :: Text
     , statusVisible :: Bool
     , search        :: Search
+    , keyWindows    :: [KeyWindow]
     }
+
+-- | A bytestring (foundationdb key or value) can be edited either as raw bytes
+-- (as ASCII text, with escape codes for binary), or as a structured tuple (if
+-- the bytes can be decoded as a tuple)
+type EditableBytes = Either Text [Elem]
 
 data Search =
   Search
@@ -37,8 +46,8 @@ data Search =
 
 data SearchRange =
   SearchRange
-    { searchFrom    :: Either Text [Elem]
-    , searchTo      :: Either Text [Elem]
+    { searchFrom    :: EditableBytes
+    , searchTo      :: EditableBytes
     , searchLimit   :: Word
     , searchReverse :: Bool
     }
@@ -66,7 +75,16 @@ data SearchResult =
     { resultKey   :: (ByteString, Maybe [Elem])
     , resultValue :: (ByteString, Maybe [Elem])
     }
-  deriving (Eq, Show)
+  deriving (Eq)
+
+data KeyWindow =
+  KeyWindow
+    { keyWindowKey             :: EditableBytes
+    , keyWindowOldValue        :: Maybe (Maybe EditableBytes)
+    , keyWindowOldValueLoading :: Bool
+    , keyWindowNewValue        :: Maybe EditableBytes
+    , keyWindowSaving          :: Bool
+    }
 
 initialState :: Database -> State
 initialState database =
@@ -85,7 +103,17 @@ initialState database =
                 }
           , searchResults = SearchNotStarted
           }
+    , keyWindows = []
     }
+
+initialKeyWindow :: KeyWindow
+initialKeyWindow = KeyWindow
+  { keyWindowKey = Left ""
+  , keyWindowOldValue = Nothing
+  , keyWindowOldValueLoading = False
+  , keyWindowNewValue = Nothing
+  , keyWindowSaving = False
+  }
 
 maxKeyTupleSize :: Seq SearchResult -> Maybe Integer
 maxKeyTupleSize = maxTupleSize . fmap resultKey

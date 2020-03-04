@@ -14,7 +14,9 @@ module FDBE.App
 import           Control.Concurrent                          (threadDelay)
 import           Control.Exception                           (displayException)
 import           Data.Either.Extra                           (mapLeft)
+import           Data.List.Index                             (updateAt)
 import           Data.Text                                   (Text, pack)
+import qualified Data.Vector                                 as Vector
 import           FoundationDB                                (Database)
 import           GI.Gtk                                      (Align (..),
                                                               Box (..),
@@ -30,13 +32,16 @@ import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
 import           Pipes                                       (yield)
 import           Pipes.Prelude                               (repeatM)
 
-import           FDBE.Event                                  (Event (..),
+import           FDBE.Event                                  (Event (..), KeyWindowEvent (..),
                                                               SearchEvent (..),
                                                               StatusEvent (..))
-import           FDBE.FoundationDB                           (getSearchResult,
+import           FDBE.FoundationDB                           (getKeyValue,
+                                                              getSearchResult,
                                                               getStatus)
+import qualified FDBE.KeyWindow                              as KeyWindow
 import qualified FDBE.Search                                 as Search
-import           FDBE.State                                  (Search (..),
+import           FDBE.State                                  (KeyWindow (..),
+                                                              Search (..),
                                                               SearchResults (..),
                                                               State (..))
 import qualified FDBE.State                                  as State
@@ -50,13 +55,15 @@ view' State {..} =
     , #widthRequest := 800
     , #heightRequest := 800
     , #windowPosition := WindowPositionCenter
-    ] <> windowAttrs) $
+    ] <> statusWindowAttr <> keyWindowAttrs) $
   container
     Box
     [#orientation := OrientationVertical]
     [ container MenuBar []
         [ menuItem MenuItem [on #activate (StatusEvent ShowStatus)]
-          $ widget Label [#label := "Status"]
+           $ widget Label [#label := "Status"]
+        , menuItem MenuItem [on #activate (KeyWindowEvent NewKeyWindow)]
+           $ widget Label [#label := "Edit"]
         ]
     , BoxChild
         { properties = defaultBoxChildProperties { fill = True, expand = True }
@@ -64,9 +71,13 @@ view' State {..} =
         }
     ]
   where
-    windowAttrs
+    statusWindowAttr
       | statusVisible = [statusWindow status]
       | otherwise     = []
+    keyWindowAttrs =
+      Vector.imap
+        (\i w -> window $ KeyWindow.view' i w)
+        (Vector.fromList keyWindows)
 
 statusWindow :: Text -> Attribute w Event
 statusWindow status = window $ bin Window
@@ -85,8 +96,9 @@ statusWindow status = window $ bin Window
 
 update' :: State -> Event -> Transition State Event
 update' state@State {..} = \case
-  StatusEvent e -> updateStatus e
-  SearchEvent e -> updateSearch e
+  StatusEvent e    -> updateStatus e
+  SearchEvent e    -> updateSearch e
+  KeyWindowEvent e -> updateKeyWindow e
   Close         -> Exit
   where
     updateStatus = \case
@@ -117,6 +129,36 @@ update' state@State {..} = \case
             Transition state {search = search { searchResults = SearchSuccess {searchResultsViewFull = viewFull, ..}}} (pure Nothing)
           _ ->
             Transition state (pure Nothing)
+
+    updateKeyWindow = \case
+      NewKeyWindow ->
+        updateKeyWindows (State.initialKeyWindow :)
+      UpdateKeyWindowKey i key ->
+        updateKeyWindowAt i (\w -> Just w { keyWindowKey = key, keyWindowOldValue = Nothing })
+      LoadWindowKeyOldValue i key ->
+        updateKeyWindowAtM i (\w -> Just w { keyWindowOldValue = Nothing, keyWindowOldValueLoading = True }) $
+          getKeyValue database key >>= \case
+            Left _err ->
+              pure Nothing
+            Right val ->
+              pure . Just $ KeyWindowEvent . UpdateKeyWindowOldValue i $ Just val
+      UpdateKeyWindowOldValue i val ->
+        updateKeyWindowAt i (\w -> Just w { keyWindowOldValue = val, keyWindowOldValueLoading = False })
+      UpdateKeyWindowNewValue i val ->
+        updateKeyWindowAt i (\w -> Just w { keyWindowNewValue = val })
+      KeyWindowSave i key value ->
+        updateKeyWindowAt i (\w -> Just w { keyWindowSaving = True })
+      CloseKeyWindow i ->
+        updateKeyWindowAt i (const Nothing)
+
+    updateKeyWindows f =
+      Transition state {keyWindows = f keyWindows} (pure Nothing)
+
+    updateKeyWindowAt i f =
+      updateKeyWindows (updateAt i f)
+
+    updateKeyWindowAtM i f =
+      Transition state {keyWindows = updateAt i f keyWindows}
 
 app :: Database -> App Window State Event
 app db =

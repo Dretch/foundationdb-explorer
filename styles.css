@@ -28,3 +28,7 @@
 .result-cell button {
     padding: 0 2px;
 }
+
+.keyWindow frame > * {
+    padding: 2px;
+}

@@ -2,17 +2,20 @@ module FDBE.Event
   ( Event(..)
   , StatusEvent(..)
   , SearchEvent(..)
+  , KeyWindowEvent(..)
   ) where
 
-import           Data.Sequence   (Seq)
-import           Data.Text       (Text)
-import           Data.Time.Clock (NominalDiffTime)
-import           FDBE.State      (SearchRange, SearchResult,
-                                  SearchResultsViewFull)
+import           Data.Sequence            (Seq)
+import           Data.Text                (Text)
+import           Data.Time.Clock          (NominalDiffTime)
+
+import           FDBE.State               (EditableBytes, SearchRange,
+                                           SearchResult, SearchResultsViewFull)
 
 data Event
   = StatusEvent StatusEvent
   | SearchEvent SearchEvent
+  | KeyWindowEvent KeyWindowEvent
   | Close
 
 data StatusEvent
@@ -26,3 +29,12 @@ data SearchEvent
   | StartSearch
   | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
   | SetSearchResultsViewFull (Maybe SearchResultsViewFull)
+
+data KeyWindowEvent
+  = NewKeyWindow
+  | UpdateKeyWindowKey Int EditableBytes
+  | LoadWindowKeyOldValue Int EditableBytes
+  | UpdateKeyWindowOldValue Int (Maybe (Maybe EditableBytes))
+  | UpdateKeyWindowNewValue Int (Maybe EditableBytes)
+  | KeyWindowSave Int EditableBytes (Maybe EditableBytes)
+  | CloseKeyWindow Int

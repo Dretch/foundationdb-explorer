@@ -88,6 +88,7 @@ rawEntry text onRawChange =
     [ #text := text
     , #tooltipText := escapeSyntaxHelp
     , #hexpand := True
+    , #valign := AlignStart
     ] <> ((\f -> onM #changed (fmap f . entryGetText)) <$> onRawChange)
 
 tupleEntry' :: forall event. [Elem] -> Vector ([Elem] -> event) -> Widget event
@@ -168,6 +169,7 @@ tupleEntry' elems onChange =
             [ #text := bytesToText bs
             , #tooltipText := escapeSyntaxHelp
             , #hexpand := True
+            , #valign := AlignStart
             ] <> onElemValueChangeM (onM #changed) (fmap (LT.Bytes . textToBytes) . entryGetText)
 
         textInput :: Text -> Widget event
@@ -175,6 +177,7 @@ tupleEntry' elems onChange =
           widget Entry $
             [ #text := t
             , #hexpand := True
+            , #valign := AlignStart
             ] <> onElemValueChangeM (onM #changed) (fmap LT.Text . entryGetText)
 
         boolInput :: Bool -> Widget event
