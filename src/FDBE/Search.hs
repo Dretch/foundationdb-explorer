@@ -45,7 +45,8 @@ import           Text.Printf                                 (printf)
 import           FDBE.Bytes                                  (bytesToText)
 import           FDBE.Event                                  (Event (..),
                                                               SearchEvent (..))
-import           FDBE.State                                  (Search (..),
+import           FDBE.State                                  (Operation (..),
+                                                              Search (..),
                                                               SearchRange (..),
                                                               SearchResult (..),
                                                               SearchResults (..),
@@ -138,11 +139,11 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
         }
     ]
   where
-    activateInputs = searchResults /= SearchInProgress
+    activateInputs = searchResults /= OperationInProgress
 
-windows :: SearchResults -> Vector (Attribute widget Event)
+windows :: Operation SearchResults -> Vector (Attribute widget Event)
 windows = \case
-  SearchSuccess { searchResultsViewFull = Just res } -> [window $ mkWindow res]
+  OperationSuccess SearchResults { searchViewFull = Just res } -> [window $ mkWindow res]
   _ -> []
   where
     mkWindow :: SearchResultsViewFull -> Bin Window Event
@@ -169,13 +170,13 @@ windows = \case
           )
         )
 
-results :: SearchResults -> Widget Event
+results :: Operation SearchResults -> Widget Event
 results =
   \case
-    SearchNotStarted -> widget Label []
-    SearchInProgress -> widget Label [#label := "Loading..."]
-    SearchFailure msg -> widget Label [#label := ("Search failed: " <> msg)]
-    SearchSuccess {searchResultsSeq = rows} ->
+    OperationNotStarted -> widget Label []
+    OperationInProgress -> widget Label [#label := "Loading..."]
+    OperationFailure msg -> widget Label [#label := ("Search failed: " <> msg)]
+    OperationSuccess SearchResults {searchSeq = rows} ->
       let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
           valueWidth = fromMaybe 1 $ maxValueTupleSize rows
        in bin ScrolledWindow [#hexpand := True, #vexpand := True] $
@@ -304,13 +305,13 @@ resultLabel rowN label tooltip =
         $ SetSearchResultsViewFull
         $ Just SearchResultsViewFull { viewFullTime, viewFullText = label }
 
-statusbar :: SearchResults -> Widget Event
+statusbar :: Operation SearchResults -> Widget Event
 statusbar res = widget Label [#label := label, #halign := AlignStart]
   where
     label
-      | SearchSuccess {searchResultsDuration, searchResultsSeq = rows} <- res =
+      | OperationSuccess SearchResults {searchDuration, searchSeq = rows} <- res =
         let nRows = show $ S.length rows
-            dur = printf "%.3fs" (realToFrac searchResultsDuration :: Double)
+            dur = printf "%.3fs" (realToFrac searchDuration :: Double)
          in T.pack $ "Fetched " <> nRows <> " keys in " <> dur
       | otherwise = ""
 

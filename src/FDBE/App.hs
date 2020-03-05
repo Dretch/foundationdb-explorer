@@ -40,7 +40,8 @@ import           FDBE.FoundationDB                           (getKeyValue,
                                                               getStatus)
 import qualified FDBE.KeyWindow                              as KeyWindow
 import qualified FDBE.Search                                 as Search
-import           FDBE.State                                  (KeyWindow (..),
+import           FDBE.State                                  (Operation (..),
+                                                              KeyWindow (..),
                                                               Search (..),
                                                               SearchResults (..),
                                                               State (..))
@@ -118,18 +119,18 @@ update' state@State {..} = \case
       SetSearchRange range ->
         Transition state {search = search {searchRange = range}} (pure Nothing)
       StartSearch ->
-        Transition state {search = search {searchResults = SearchInProgress}} $ do
+        Transition state {search = search {searchResults = OperationInProgress}} $ do
           res <- getSearchResult database (searchRange search)
           pure . Just . SearchEvent . FinishSearch $ mapLeft (pack . displayException) res
       FinishSearch results ->
-        let mkSuccess (searchResultsDuration, searchResultsSeq) =
-              SearchSuccess{searchResultsViewFull = Nothing, ..}
-            searchResults = either SearchFailure mkSuccess results
+        let mkSuccess (searchDuration, searchSeq) =
+              OperationSuccess SearchResults {searchViewFull = Nothing, ..}
+            searchResults = either OperationFailure mkSuccess results
         in Transition state {search = search {searchResults}} (pure Nothing)
       SetSearchResultsViewFull viewFull ->
         case searchResults search of
-          SearchSuccess {..} ->
-            Transition state {search = search { searchResults = SearchSuccess {searchResultsViewFull = viewFull, ..}}} (pure Nothing)
+          OperationSuccess SearchResults {..} ->
+            Transition state {search =search { searchResults = OperationSuccess SearchResults {searchViewFull = viewFull, ..}}} (pure Nothing)
           _ ->
             Transition state (pure Nothing)
 
@@ -137,20 +138,19 @@ update' state@State {..} = \case
       NewKeyWindow ->
         updateKeyWindows (State.initialKeyWindow :)
       UpdateKeyWindowKey i key ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowKey = key, keyWindowOldValue = Nothing })
+        updateKeyWindowAt i (\w -> Just w { keyWindowKey = key, keyWindowOldValue = OperationNotStarted })
       LoadWindowKeyOldValue i key ->
-        updateKeyWindowAtM i (\w -> Just w { keyWindowOldValue = Nothing, keyWindowOldValueLoading = True }) $
-          getKeyValue database key >>= \case
-            Left _err ->
-              pure Nothing
-            Right val ->
-              pure . Just $ KeyWindowEvent . UpdateKeyWindowOldValue i $ Just val
-      UpdateKeyWindowOldValue i val ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowOldValue = val, keyWindowOldValueLoading = False })
+        updateKeyWindowAtM i (\w -> Just w { keyWindowOldValue = OperationInProgress }) $ do
+          op <- getKeyValue database key >>= \case
+            Left msg  -> pure . OperationFailure . pack . displayException $ msg
+            Right val -> pure $ OperationSuccess val
+          pure . Just . KeyWindowEvent $ UpdateKeyWindowOldValue i op
+      UpdateKeyWindowOldValue i op ->
+        updateKeyWindowAt i (\w -> Just w { keyWindowOldValue = op })
       UpdateKeyWindowNewValue i val ->
         updateKeyWindowAt i (\w -> Just w { keyWindowNewValue = val })
       KeyWindowSave i key value ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowSaving = True })
+        updateKeyWindowAt i (\w -> Just w { keyWindowSave = OperationInProgress })
       CloseKeyWindow i ->
         updateKeyWindowAt i (const Nothing)
 

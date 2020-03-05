@@ -1,8 +1,11 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module FDBE.State
-  ( EditableBytes
+  ( Operation(..)
+  , operationSuccess
+  , EditableBytes
   , State(..)
   , Search(..)
   , SearchRange(..)
@@ -38,10 +41,19 @@ data State =
 -- the bytes can be decoded as a tuple)
 type EditableBytes = Either Text [Elem]
 
+-- | Some kind of operation that takes time, and that we want to update the UI
+-- about before it has been completed. E.g. loading/saving database keys.
+data Operation a
+  = OperationNotStarted
+  | OperationInProgress
+  | OperationSuccess a
+  | OperationFailure Text
+  deriving (Eq)
+
 data Search =
   Search
     { searchRange   :: SearchRange
-    , searchResults :: SearchResults
+    , searchResults :: Operation SearchResults
     }
 
 data SearchRange =
@@ -52,15 +64,12 @@ data SearchRange =
     , searchReverse :: Bool
     }
 
-data SearchResults
-  = SearchNotStarted
-  | SearchInProgress
-  | SearchSuccess
-      { searchResultsDuration :: NominalDiffTime
-      , searchResultsSeq      :: Seq SearchResult
-      , searchResultsViewFull :: Maybe SearchResultsViewFull
-      }
-  | SearchFailure Text
+data SearchResults =
+  SearchResults
+    { searchDuration :: NominalDiffTime
+    , searchSeq      :: Seq SearchResult
+    , searchViewFull :: Maybe SearchResultsViewFull
+    }
   deriving (Eq)
 
 data SearchResultsViewFull =
@@ -79,11 +88,10 @@ data SearchResult =
 
 data KeyWindow =
   KeyWindow
-    { keyWindowKey             :: EditableBytes
-    , keyWindowOldValue        :: Maybe (Maybe EditableBytes)
-    , keyWindowOldValueLoading :: Bool
-    , keyWindowNewValue        :: Maybe EditableBytes
-    , keyWindowSaving          :: Bool
+    { keyWindowKey      :: EditableBytes
+    , keyWindowOldValue :: Operation (Maybe EditableBytes)
+    , keyWindowNewValue :: Maybe EditableBytes
+    , keyWindowSave     :: Operation ()
     }
 
 initialState :: Database -> State
@@ -101,7 +109,7 @@ initialState database =
                 , searchLimit = 100
                 , searchReverse = False
                 }
-          , searchResults = SearchNotStarted
+          , searchResults = OperationNotStarted
           }
     , keyWindows = []
     }
@@ -109,10 +117,9 @@ initialState database =
 initialKeyWindow :: KeyWindow
 initialKeyWindow = KeyWindow
   { keyWindowKey = Left ""
-  , keyWindowOldValue = Nothing
-  , keyWindowOldValueLoading = False
+  , keyWindowOldValue = OperationNotStarted
   , keyWindowNewValue = Nothing
-  , keyWindowSaving = False
+  , keyWindowSave = OperationNotStarted
   }
 
 maxKeyTupleSize :: Seq SearchResult -> Maybe Integer
@@ -126,3 +133,8 @@ maxTupleSize rows =
   case S.viewr $ S.sort $ fmap length . snd <$> rows of
     S.EmptyR -> Nothing
     _ :> a   -> fromIntegral <$> a
+
+operationSuccess :: Operation a -> Maybe a
+operationSuccess = \case
+  OperationSuccess a -> Just a
+  _ -> Nothing

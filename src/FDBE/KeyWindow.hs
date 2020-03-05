@@ -8,12 +8,11 @@ module FDBE.KeyWindow
   ) where
 
 import           Data.Maybe                        (isJust)
-import           Data.Text                         (Text)
 import           Data.Vector                       (Vector)
-import           FoundationDB.Layer.Tuple          (Elem)
 import           GI.Gtk                            (Align (..), Box (..),
                                                     Button (..), Frame (..),
-                                                    Grid (..), Orientation (..),
+                                                    Grid (..), Label (..),
+                                                    Orientation (..),
                                                     Window (..),
                                                     WindowPosition (..))
 import           GI.Gtk.Declarative
@@ -23,7 +22,10 @@ import           GI.Gtk.Declarative.Container.Grid (GridChild (..),
 
 import           FDBE.Event                        (Event (..),
                                                     KeyWindowEvent (..))
-import           FDBE.State                        (KeyWindow (..))
+import           FDBE.State                        (Operation (..),
+                                                    EditableBytes,
+                                                    KeyWindow (..),
+                                                    operationSuccess)
 import qualified FDBE.Widget.ComboBoxText          as ComboBoxText
 import qualified FDBE.Widget.TupleEntry            as TupleEntry
 
@@ -40,7 +42,7 @@ view' i KeyWindow {..} =
     container Grid
       [ #orientation := OrientationVertical
       , #margin := 4
-      , #sensitive := not keyWindowSaving
+      , #sensitive := (keyWindowSave /= OperationInProgress)
       ]
       [ GridChild
           { properties = defaultGridChildProperties { height = 2 }
@@ -58,7 +60,6 @@ view' i KeyWindow {..} =
                 [ #label := "Existing Value"
                 , #hexpand := True
                 , #margin := 2
-                , #sensitive := not keyWindowOldValueLoading
                 ] $
                 oldValueEntry
                   keyWindowOldValue
@@ -70,13 +71,13 @@ view' i KeyWindow {..} =
               bin Frame [#label := "New Value", #hexpand := True, #margin := 2] $
                 newValueEntry
                   keyWindowNewValue
-                  (KeyWindowEvent . UpdateKeyWindowNewValue i <$> keyWindowOldValue)
+                  (KeyWindowEvent . UpdateKeyWindowNewValue i <$> operationSuccess keyWindowOldValue)
                   (KeyWindowEvent . UpdateKeyWindowNewValue i)
           }
       ]
 
 oldValueEntry
-  :: Maybe (Maybe (Either Text [Elem]))
+  :: Operation (Maybe EditableBytes)
   -> event
   -> Widget event
 oldValueEntry oldValue onLoadClick =
@@ -91,28 +92,39 @@ oldValueEntry oldValue onLoadClick =
       , child = widget Button
           [ #label := "Load value at key"
           , #halign := AlignStart
+          , #sensitive := (oldValue /= OperationInProgress)
           , on #clicked onLoadClick
           ]
       }
 
     loadedBoxChildren = case oldValue of
-      Nothing -> []
-      Just maybeValue ->
+      OperationNotStarted -> []
+      OperationInProgress -> []
+      OperationSuccess maybeValue ->
         let combo = existsCombo maybeValue [ComboBoxText.RawAttribute (#sensitive := False)]
             entry = case maybeValue of
               Nothing -> []
               Just mv ->
                 [ BoxChild
                     { properties = defaultBoxChildProperties { expand = True, fill = True }
-                    , child = TupleEntry.tupleEntry [TupleEntry.Value mv, TupleEntry.RawAttribute (#sensitive := False)]
+                    , child = TupleEntry.tupleEntry
+                        [ TupleEntry.Value mv
+                        , TupleEntry.RawAttribute (#sensitive := False)
+                        ]
                     }
                 ]
         in [combo] <> entry
+      OperationFailure msg ->
+        [ BoxChild
+            { properties = defaultBoxChildProperties
+            , child = widget Label [#label := msg]
+            }
+        ]
 
 newValueEntry
-  :: Maybe (Either Text [Elem])
+  :: Maybe EditableBytes
   -> Maybe event
-  -> (Maybe (Either Text [Elem]) -> event)
+  -> (Maybe EditableBytes -> event)
   -> Widget event
 newValueEntry maybeValue onCopyClick onChange =
   container Box
@@ -152,11 +164,15 @@ newValueEntry maybeValue onCopyClick onChange =
 
     saveButton = BoxChild
       { properties = defaultBoxChildProperties
-      , child = widget Button [#label := "Save Value", #halign := AlignEnd]
+      , child = widget Button
+          [ #label := "Save Value"
+          , #halign := AlignEnd
+          , #sensitive := False
+          ]
       }
 
 existsCombo
-  :: Maybe (Either Text [Elem])
+  :: Maybe EditableBytes
   -> Vector (ComboBoxText.ComboBoxAttribute event)
   -> BoxChild event
 existsCombo maybeValue attrs =
