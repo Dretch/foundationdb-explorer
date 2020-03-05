@@ -10,6 +10,7 @@ dependencies:
 - data-default-class
 - deepseq
 - errors
+- either
 - extra
 - file-embed
 - foundationdb-haskell

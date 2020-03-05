@@ -9,9 +9,8 @@ import           Data.Sequence   (Seq)
 import           Data.Text       (Text)
 import           Data.Time.Clock (NominalDiffTime)
 
-import           FDBE.State      (Operation (..), EditableBytes,
-                                  SearchRange, SearchResult,
-                                  SearchResultsViewFull)
+import           FDBE.State      (EditableBytes, Operation (..), SearchRange,
+                                  SearchResult, SearchResultsViewFull)
 
 data Event
   = StatusEvent StatusEvent
@@ -34,8 +33,9 @@ data SearchEvent
 data KeyWindowEvent
   = NewKeyWindow
   | UpdateKeyWindowKey Int EditableBytes
-  | LoadWindowKeyOldValue Int EditableBytes
+  | LoadKeyWindowOldValue Int EditableBytes
   | UpdateKeyWindowOldValue Int (Operation (Maybe EditableBytes))
   | UpdateKeyWindowNewValue Int (Maybe EditableBytes)
   | KeyWindowSave Int EditableBytes (Maybe EditableBytes)
+  | UpdateKeyWindowSave Int (Operation ())
   | CloseKeyWindow Int

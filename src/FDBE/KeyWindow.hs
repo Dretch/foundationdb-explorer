@@ -8,6 +8,7 @@ module FDBE.KeyWindow
   ) where
 
 import           Data.Maybe                        (isJust)
+import           Data.Text                         (Text)
 import           Data.Vector                       (Vector)
 import           GI.Gtk                            (Align (..), Box (..),
                                                     Button (..), Frame (..),
@@ -22,9 +23,9 @@ import           GI.Gtk.Declarative.Container.Grid (GridChild (..),
 
 import           FDBE.Event                        (Event (..),
                                                     KeyWindowEvent (..))
-import           FDBE.State                        (Operation (..),
-                                                    EditableBytes,
+import           FDBE.State                        (EditableBytes,
                                                     KeyWindow (..),
+                                                    Operation (..),
                                                     operationSuccess)
 import qualified FDBE.Widget.ComboBoxText          as ComboBoxText
 import qualified FDBE.Widget.TupleEntry            as TupleEntry
@@ -61,26 +62,22 @@ view' i KeyWindow {..} =
                 , #hexpand := True
                 , #margin := 2
                 ] $
-                oldValueEntry
-                  keyWindowOldValue
-                  (KeyWindowEvent $ LoadWindowKeyOldValue i keyWindowKey)
+                oldValueEntry i keyWindowKey keyWindowOldValue
           }
       , GridChild
           { properties = defaultGridChildProperties { leftAttach = 1, topAttach = 1 }
           , child =
               bin Frame [#label := "New Value", #hexpand := True, #margin := 2] $
-                newValueEntry
-                  keyWindowNewValue
-                  (KeyWindowEvent . UpdateKeyWindowNewValue i <$> operationSuccess keyWindowOldValue)
-                  (KeyWindowEvent . UpdateKeyWindowNewValue i)
+                newValueEntry i keyWindowKey keyWindowOldValue keyWindowNewValue keyWindowSave
           }
       ]
 
 oldValueEntry
-  :: Operation (Maybe EditableBytes)
-  -> event
-  -> Widget event
-oldValueEntry oldValue onLoadClick =
+  :: Int
+  -> EditableBytes
+  -> Operation (Maybe EditableBytes)
+  -> Widget Event
+oldValueEntry i key oldValue =
   container Box
     [ #orientation := OrientationVertical
     , #spacing := 4
@@ -93,7 +90,7 @@ oldValueEntry oldValue onLoadClick =
           [ #label := "Load value at key"
           , #halign := AlignStart
           , #sensitive := (oldValue /= OperationInProgress)
-          , on #clicked onLoadClick
+          , on #clicked (KeyWindowEvent $ LoadKeyWindowOldValue i key)
           ]
       }
 
@@ -115,38 +112,39 @@ oldValueEntry oldValue onLoadClick =
                 ]
         in [combo] <> entry
       OperationFailure msg ->
-        [ BoxChild
-            { properties = defaultBoxChildProperties
-            , child = widget Label [#label := msg]
-            }
-        ]
+        [boxChildLabel msg]
 
 newValueEntry
-  :: Maybe EditableBytes
-  -> Maybe event
-  -> (Maybe EditableBytes -> event)
-  -> Widget event
-newValueEntry maybeValue onCopyClick onChange =
+  :: Int
+  -> EditableBytes
+  -> Operation (Maybe EditableBytes)
+  -> Maybe EditableBytes
+  -> Operation ()
+  -> Widget Event
+newValueEntry i key oldValue newValue saveOperation =
   container Box
     [ #orientation := OrientationVertical
     , #spacing := 4
     ] $
-    [copyButton, combo] <> entry <> [saveButton]
+    [copyButton, combo] <> entry <> [saveButton] <> saveResult
   where
     copyButton = BoxChild
       { properties = defaultBoxChildProperties
       , child = widget Button $
           [ #label := "Copy from existing value"
           , #halign := AlignStart
-          ] <> case onCopyClick of
+          ] <> case operationSuccess oldValue of
             Nothing -> [#sensitive := False]
-            Just e  -> [on #clicked e]
+            Just e  -> [on #clicked (KeyWindowEvent $ UpdateKeyWindowNewValue i e)]
       }
 
-    combo =
-      existsCombo maybeValue [ComboBoxText.OnChanged (onChange . onComboChange)]
+    onChange =
+      KeyWindowEvent . UpdateKeyWindowNewValue i
 
-    entry = case maybeValue of
+    combo =
+      existsCombo newValue [ComboBoxText.OnChanged (onChange . onComboChange)]
+
+    entry = case newValue of
       Nothing -> []
       Just mv ->
         [ BoxChild
@@ -164,12 +162,19 @@ newValueEntry maybeValue onCopyClick onChange =
 
     saveButton = BoxChild
       { properties = defaultBoxChildProperties
-      , child = widget Button
+      , child = widget Button $
           [ #label := "Save Value"
           , #halign := AlignEnd
-          , #sensitive := False
-          ]
+          ] <> case saveOperation of
+            OperationInProgress -> [#sensitive := False]
+            _ -> [on #clicked (KeyWindowEvent $ KeyWindowSave i key newValue)]
       }
+
+    saveResult = case saveOperation of
+      OperationNotStarted  -> []
+      OperationInProgress  -> []
+      OperationFailure msg -> [boxChildLabel msg]
+      OperationSuccess ()  -> [boxChildLabel "Value saved successfully"]
 
 existsCombo
   :: Maybe EditableBytes
@@ -184,3 +189,9 @@ existsCombo maybeValue attrs =
           , ComboBoxText.Position (if isJust maybeValue then 0 else 1)
           ] <> attrs
     }
+
+boxChildLabel :: Text -> BoxChild event
+boxChildLabel msg = BoxChild
+  { properties = defaultBoxChildProperties
+  , child = widget Label [#label := msg]
+  }

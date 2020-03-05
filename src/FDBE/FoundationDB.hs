@@ -6,6 +6,7 @@ module FDBE.FoundationDB
   , getStatus
   , getSearchResult
   , getKeyValue
+  , setKeyValue
   ) where
 
 import           Control.DeepSeq          (force)
@@ -13,6 +14,7 @@ import           Control.Error.Util       (hush)
 import           Control.Exception        (evaluate, try)
 import           Control.Monad.IO.Class   (liftIO)
 import           Data.ByteString          (ByteString)
+import           Data.Either.Combinators  (leftToMaybe)
 import           Data.Sequence            (Seq)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
@@ -26,7 +28,7 @@ import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems,
                                            encodeTupleElems)
 import qualified System.Process           as P
 
-import           FDBE.Bytes               (textToBytes, bytesToText)
+import           FDBE.Bytes               (bytesToText, textToBytes)
 import           FDBE.State               (EditableBytes, SearchRange (..),
                                            SearchResult (..))
 
@@ -79,3 +81,13 @@ getKeyValue db key =
         pure . Just $ Right tup
       Just bs ->
         pure . Just . Left $ bytesToText bs
+
+setKeyValue :: Database -> EditableBytes -> Maybe EditableBytes -> IO (Maybe Error)
+setKeyValue db key value =
+  fmap leftToMaybe <$> try $
+    FDB.runTransaction db $
+      case value of
+        Nothing ->
+          FDB.clear (selectorToBytes key)
+        Just v ->
+          FDB.set (selectorToBytes key) (selectorToBytes v)

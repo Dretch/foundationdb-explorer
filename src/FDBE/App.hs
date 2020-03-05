@@ -37,11 +37,12 @@ import           FDBE.Event                                  (Event (..), KeyWin
                                                               StatusEvent (..))
 import           FDBE.FoundationDB                           (getKeyValue,
                                                               getSearchResult,
-                                                              getStatus)
+                                                              getStatus,
+                                                              setKeyValue)
 import qualified FDBE.KeyWindow                              as KeyWindow
 import qualified FDBE.Search                                 as Search
-import           FDBE.State                                  (Operation (..),
-                                                              KeyWindow (..),
+import           FDBE.State                                  (KeyWindow (..),
+                                                              Operation (..),
                                                               Search (..),
                                                               SearchResults (..),
                                                               State (..))
@@ -139,10 +140,10 @@ update' state@State {..} = \case
         updateKeyWindows (State.initialKeyWindow :)
       UpdateKeyWindowKey i key ->
         updateKeyWindowAt i (\w -> Just w { keyWindowKey = key, keyWindowOldValue = OperationNotStarted })
-      LoadWindowKeyOldValue i key ->
+      LoadKeyWindowOldValue i key ->
         updateKeyWindowAtM i (\w -> Just w { keyWindowOldValue = OperationInProgress }) $ do
           op <- getKeyValue database key >>= \case
-            Left msg  -> pure . OperationFailure . pack . displayException $ msg
+            Left e    -> pure . OperationFailure . pack $ displayException e
             Right val -> pure $ OperationSuccess val
           pure . Just . KeyWindowEvent $ UpdateKeyWindowOldValue i op
       UpdateKeyWindowOldValue i op ->
@@ -150,7 +151,13 @@ update' state@State {..} = \case
       UpdateKeyWindowNewValue i val ->
         updateKeyWindowAt i (\w -> Just w { keyWindowNewValue = val })
       KeyWindowSave i key value ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowSave = OperationInProgress })
+        updateKeyWindowAtM i (\w -> Just w { keyWindowSave = OperationInProgress }) $ do
+          op <- setKeyValue database key value >>= \case
+            Just e  -> pure . OperationFailure . pack $ displayException e
+            Nothing -> pure $ OperationSuccess ()
+          pure . Just . KeyWindowEvent $ UpdateKeyWindowSave i op
+      UpdateKeyWindowSave i op ->
+        updateKeyWindowAt i (\w -> Just w { keyWindowSave = op })
       CloseKeyWindow i ->
         updateKeyWindowAt i (const Nothing)
 
