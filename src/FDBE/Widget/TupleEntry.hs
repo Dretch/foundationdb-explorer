@@ -98,7 +98,7 @@ tupleEntry' elems onChange =
   where
     elemEntry :: Int -> Elem -> BoxChild event
     elemEntry i field =
-      BoxChild defaultBoxChildProperties { expand = True, fill = True } $
+      BoxChild defaultBoxChildProperties $
         container Box [#spacing := 2]
           [ BoxChild defaultBoxChildProperties combo
           , BoxChild defaultBoxChildProperties { expand = True, fill = True } input

@@ -149,7 +149,7 @@ update' state@State {..} = \case
       UpdateKeyWindowOldValue i op ->
         updateKeyWindowAt i (\w -> Just w { keyWindowOldValue = op })
       UpdateKeyWindowNewValue i val ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowNewValue = val })
+        updateKeyWindowAt i (\w -> Just w { keyWindowNewValue = val, keyWindowSave = OperationNotStarted })
       KeyWindowSave i key value ->
         updateKeyWindowAtM i (\w -> Just w { keyWindowSave = OperationInProgress }) $ do
           op <- setKeyValue database key value >>= \case

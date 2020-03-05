@@ -8,7 +8,6 @@ module FDBE.KeyWindow
   ) where
 
 import           Data.Maybe                        (isJust)
-import           Data.Text                         (Text)
 import           Data.Vector                       (Vector)
 import           GI.Gtk                            (Align (..), Box (..),
                                                     Button (..), Frame (..),
@@ -43,7 +42,8 @@ view' i KeyWindow {..} =
     container Grid
       [ #orientation := OrientationVertical
       , #margin := 4
-      , #sensitive := (keyWindowSave /= OperationInProgress)
+      , #rowHomogeneous := True
+      , #columnHomogeneous := True
       ]
       [ GridChild
           { properties = defaultGridChildProperties { height = 2 }
@@ -112,7 +112,11 @@ oldValueEntry i key oldValue =
                 ]
         in [combo] <> entry
       OperationFailure msg ->
-        [boxChildLabel msg]
+        [ BoxChild
+            { properties = defaultBoxChildProperties { expand = True, fill = False }
+            , child = widget Label [#label := msg]
+            }
+        ]
 
 newValueEntry
   :: Int
@@ -126,7 +130,7 @@ newValueEntry i key oldValue newValue saveOperation =
     [ #orientation := OrientationVertical
     , #spacing := 4
     ] $
-    [copyButton, combo] <> entry <> [saveButton] <> saveResult
+    [copyButton, combo] <> entry <> [saveButton]
   where
     copyButton = BoxChild
       { properties = defaultBoxChildProperties
@@ -161,20 +165,32 @@ newValueEntry i key oldValue newValue saveOperation =
       if pos == 0 then Just (Left "") else Nothing
 
     saveButton = BoxChild
-      { properties = defaultBoxChildProperties
-      , child = widget Button $
-          [ #label := "Save Value"
-          , #halign := AlignEnd
-          ] <> case saveOperation of
-            OperationInProgress -> [#sensitive := False]
-            _ -> [on #clicked (KeyWindowEvent $ KeyWindowSave i key newValue)]
+      { properties = defaultBoxChildProperties {expand = True, fill = True}
+      , child = container Box [#valign := AlignEnd]
+          [ BoxChild
+              { properties = defaultBoxChildProperties { expand = True, fill = True }
+              , child = widget Label
+                  [ #label := saveResultLabel
+                  , #halign := AlignStart
+                  ]
+              }
+          , BoxChild
+              { properties = defaultBoxChildProperties
+              , child = widget Button $
+                  [ #label := "Save Value"
+                  , #halign := AlignEnd
+                  ] <> case saveOperation of
+                    OperationInProgress -> [#sensitive := False]
+                    _ -> [on #clicked (KeyWindowEvent $ KeyWindowSave i key newValue)]
+              }
+          ]
       }
 
-    saveResult = case saveOperation of
-      OperationNotStarted  -> []
-      OperationInProgress  -> []
-      OperationFailure msg -> [boxChildLabel msg]
-      OperationSuccess ()  -> [boxChildLabel "Value saved successfully"]
+    saveResultLabel = case saveOperation of
+      OperationNotStarted  -> ""
+      OperationInProgress  -> ""
+      OperationFailure msg -> msg
+      OperationSuccess ()  -> "Value saved successfully"
 
 existsCombo
   :: Maybe EditableBytes
@@ -189,9 +205,3 @@ existsCombo maybeValue attrs =
           , ComboBoxText.Position (if isJust maybeValue then 0 else 1)
           ] <> attrs
     }
-
-boxChildLabel :: Text -> BoxChild event
-boxChildLabel msg = BoxChild
-  { properties = defaultBoxChildProperties
-  , child = widget Label [#label := msg]
-  }
