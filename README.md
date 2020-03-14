@@ -12,7 +12,7 @@ Not particularly finished, probably won't work for you, etc.
 
 ## Installation
 
-Those with Ubuntu-based systems can try the `.deb` package from the [Github releases page](https://github.com/Dretch/foundationdb-explorer/releases).
+Those with Ubuntu-based systems can try the `.deb` package from the [Github releases page](https://github.com/Dretch/foundationdb-explorer/releases). The executable that gets installed is called `foundationdb-explorer`.
 
 ## Building
 
