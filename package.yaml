@@ -20,12 +20,15 @@ dependencies:
 - gi-gtk
 - gi-gtk-declarative
 - gi-gtk-declarative-app-simple
+- hashable
 - ilist
 - megaparsec
 - pipes
 - process
+- random
 - text
 - time
+- unordered-containers
 - util
 - uuid
 - vector

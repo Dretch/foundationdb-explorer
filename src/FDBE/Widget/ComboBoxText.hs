@@ -29,7 +29,7 @@ data ComboBoxAttribute event
 comboBox :: Vector (ComboBoxAttribute event) -> Widget event
 comboBox attrs =
   widget Gtk.ComboBoxText $
-    Vector.fromList rawAttrs `Vector.snoc` customAttribute comboBoxText
+    Vector.fromList rawAttrs `Vector.snoc` customAttribute () comboBoxText
   where
     (comboBoxText, rawAttrs) = foldl go (defaultComboBoxText, []) attrs
     go (comboBoxText', attrs') = \case

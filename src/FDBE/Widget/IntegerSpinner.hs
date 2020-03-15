@@ -13,12 +13,13 @@ module FDBE.Widget.IntegerSpinner
   , spinner
   ) where
 
+import           Prelude            hiding (max, min)
+
 import           Control.Monad      (void)
 import           Data.Vector        (Vector)
 import qualified Data.Vector        as Vector
 import qualified GI.Gtk             as Gtk
 import           GI.Gtk.Declarative
-import           Prelude            hiding (max, min)
 
 data SpinnerAttribute val event
   = RawAttribute (Attribute Gtk.SpinButton event)
@@ -33,7 +34,7 @@ spinner
   -> Widget event
 spinner attrs =
   widget Gtk.SpinButton $
-    Vector.fromList rawAttrs `Vector.snoc` customAttribute (IntegerSpinner props)
+    Vector.fromList rawAttrs `Vector.snoc` customAttribute () (IntegerSpinner props)
   where
     (props, rawAttrs) = foldl go (defaultProps, []) attrs
     go (props', attrs') = \case

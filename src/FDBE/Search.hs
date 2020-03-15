@@ -143,7 +143,7 @@ view' Search {searchRange = searchRange@SearchRange {..}, ..} =
 
 windows :: Operation SearchResults -> Vector (Attribute widget Event)
 windows = \case
-  OperationSuccess SearchResults { searchViewFull = Just res } -> [window $ mkWindow res]
+  OperationSuccess SearchResults { searchViewFull = Just res } -> [window () (mkWindow res)]
   _ -> []
   where
     mkWindow :: SearchResultsViewFull -> Bin Window Event

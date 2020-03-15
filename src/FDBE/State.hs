@@ -1,6 +1,7 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE NamedFieldPuns             #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module FDBE.State
   ( Operation(..)
@@ -12,6 +13,7 @@ module FDBE.State
   , SearchResults(..)
   , SearchResult(..)
   , SearchResultsViewFull(..)
+  , KeyWindowId(..)
   , KeyWindow(..)
   , initialState
   , initialKeyWindow
@@ -20,12 +22,17 @@ module FDBE.State
   ) where
 
 import           Data.ByteString          (ByteString)
+import           Data.Hashable            (Hashable)
+import           Data.HashMap.Strict      (HashMap)
+import qualified Data.HashMap.Strict      as HashMap
 import           Data.Sequence            (Seq, ViewR (..))
 import qualified Data.Sequence            as S
 import           Data.Text                (Text)
 import           Data.Time.Clock          (NominalDiffTime, UTCTime)
+import           Data.UUID                (UUID)
 import           FoundationDB             (Database)
 import           FoundationDB.Layer.Tuple (Elem)
+import           System.Random            (Random)
 
 data State =
   State
@@ -33,7 +40,7 @@ data State =
     , status        :: Text
     , statusVisible :: Bool
     , search        :: Search
-    , keyWindows    :: [KeyWindow]
+    , keyWindows    :: HashMap KeyWindowId KeyWindow
     }
 
 -- | A bytestring (foundationdb key or value) can be edited either as raw bytes
@@ -86,6 +93,9 @@ data SearchResult =
     }
   deriving (Eq)
 
+newtype KeyWindowId = KeyWindowId UUID
+  deriving (Eq, Hashable, Random)
+
 data KeyWindow =
   KeyWindow
     { keyWindowKey      :: EditableBytes
@@ -111,7 +121,7 @@ initialState database =
                 }
           , searchResults = OperationNotStarted
           }
-    , keyWindows = []
+    , keyWindows = HashMap.empty
     }
 
 initialKeyWindow :: KeyWindow

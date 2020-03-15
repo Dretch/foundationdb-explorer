@@ -24,7 +24,7 @@ data SpinnerAttribute event
 spinner :: Vector (SpinnerAttribute event) -> Widget event
 spinner attrs =
   widget Gtk.SpinButton $
-    Vector.fromList rawAttrs `Vector.snoc` customAttribute (DoubleSpinner value)
+    Vector.fromList rawAttrs `Vector.snoc` customAttribute () (DoubleSpinner value)
   where
     (value, rawAttrs) = foldl go (0, []) attrs
     go (value', attrs') = \case

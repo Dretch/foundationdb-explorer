@@ -7,6 +7,8 @@ module FDBE.KeyWindow
   ( view'
   ) where
 
+import           Prelude                           hiding (id)
+
 import           Data.Maybe                        (isJust)
 import           Data.Vector                       (Vector)
 import           GI.Gtk                            (Align (..), Box (..),
@@ -23,17 +25,17 @@ import           GI.Gtk.Declarative.Container.Grid (GridChild (..),
 import           FDBE.Event                        (Event (..),
                                                     KeyWindowEvent (..))
 import           FDBE.State                        (EditableBytes,
-                                                    KeyWindow (..),
+                                                    KeyWindow (..), KeyWindowId,
                                                     Operation (..),
                                                     operationSuccess)
 import qualified FDBE.Widget.ComboBoxText          as ComboBoxText
 import qualified FDBE.Widget.TupleEntry            as TupleEntry
 
-view' :: Int -> KeyWindow -> Bin Window Event
-view' i KeyWindow {..} =
+view' :: KeyWindowId -> KeyWindow -> Bin Window Event
+view' id KeyWindow {..} =
   bin Window
     [ #title := "Edit Value at Key"
-    , on #deleteEvent (const (True, KeyWindowEvent $ CloseKeyWindow i))
+    , on #deleteEvent (const (True, KeyWindowEvent $ CloseKeyWindow id))
     , #widthRequest := 900
     , #heightRequest := 500
     , #windowPosition := WindowPositionCenter
@@ -51,7 +53,7 @@ view' i KeyWindow {..} =
               bin Frame [#label := "Key", #vexpand := True, #hexpand := True, #margin := 2] $
                 TupleEntry.tupleEntry
                   [ TupleEntry.Value keyWindowKey
-                  , TupleEntry.OnChanged (KeyWindowEvent . UpdateKeyWindowKey i)
+                  , TupleEntry.OnChanged (KeyWindowEvent . UpdateKeyWindowKey id)
                   ]
           }
       , GridChild
@@ -62,22 +64,22 @@ view' i KeyWindow {..} =
                 , #hexpand := True
                 , #margin := 2
                 ] $
-                oldValueEntry i keyWindowKey keyWindowOldValue
+                oldValueEntry id keyWindowKey keyWindowOldValue
           }
       , GridChild
           { properties = defaultGridChildProperties { leftAttach = 1, topAttach = 1 }
           , child =
               bin Frame [#label := "New Value", #hexpand := True, #margin := 2] $
-                newValueEntry i keyWindowKey keyWindowOldValue keyWindowNewValue keyWindowSave
+                newValueEntry id keyWindowKey keyWindowOldValue keyWindowNewValue keyWindowSave
           }
       ]
 
 oldValueEntry
-  :: Int
+  :: KeyWindowId
   -> EditableBytes
   -> Operation (Maybe EditableBytes)
   -> Widget Event
-oldValueEntry i key oldValue =
+oldValueEntry id key oldValue =
   container Box
     [ #orientation := OrientationVertical
     , #spacing := 4
@@ -90,7 +92,7 @@ oldValueEntry i key oldValue =
           [ #label := "Load value at key"
           , #halign := AlignStart
           , #sensitive := (oldValue /= OperationInProgress)
-          , on #clicked (KeyWindowEvent $ LoadKeyWindowOldValue i key)
+          , on #clicked (KeyWindowEvent $ LoadKeyWindowOldValue id key)
           ]
       }
 
@@ -119,13 +121,13 @@ oldValueEntry i key oldValue =
         ]
 
 newValueEntry
-  :: Int
+  :: KeyWindowId
   -> EditableBytes
   -> Operation (Maybe EditableBytes)
   -> Maybe EditableBytes
   -> Operation ()
   -> Widget Event
-newValueEntry i key oldValue newValue saveOperation =
+newValueEntry id key oldValue newValue saveOperation =
   container Box
     [ #orientation := OrientationVertical
     , #spacing := 4
@@ -139,11 +141,11 @@ newValueEntry i key oldValue newValue saveOperation =
           , #halign := AlignStart
           ] <> case operationSuccess oldValue of
             Nothing -> [#sensitive := False]
-            Just e  -> [on #clicked (KeyWindowEvent $ UpdateKeyWindowNewValue i e)]
+            Just e  -> [on #clicked (KeyWindowEvent $ UpdateKeyWindowNewValue id e)]
       }
 
     onChange =
-      KeyWindowEvent . UpdateKeyWindowNewValue i
+      KeyWindowEvent . UpdateKeyWindowNewValue id
 
     combo =
       existsCombo newValue [ComboBoxText.OnChanged (onChange . onComboChange)]
@@ -181,7 +183,7 @@ newValueEntry i key oldValue newValue saveOperation =
                   , #halign := AlignEnd
                   ] <> case saveOperation of
                     OperationInProgress -> [#sensitive := False]
-                    _ -> [on #clicked (KeyWindowEvent $ KeyWindowSave i key newValue)]
+                    _ -> [on #clicked (KeyWindowEvent $ KeyWindowSave id key newValue)]
               }
           ]
       }

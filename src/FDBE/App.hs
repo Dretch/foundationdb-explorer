@@ -11,10 +11,13 @@ module FDBE.App
   , app
   ) where
 
+import           Prelude                                     hiding (id)
+
 import           Control.Concurrent                          (threadDelay)
 import           Control.Exception                           (displayException)
 import           Data.Either.Extra                           (mapLeft)
-import           Data.List.Index                             (updateAt)
+import           Data.Functor                                ((<&>))
+import qualified Data.HashMap.Strict                         as HashMap
 import           Data.Text                                   (Text, pack)
 import qualified Data.Vector                                 as Vector
 import           FoundationDB                                (Database)
@@ -31,6 +34,7 @@ import           GI.Gtk.Declarative.App.Simple
 import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
 import           Pipes                                       (yield)
 import           Pipes.Prelude                               (repeatM)
+import           System.Random                               (randomIO)
 
 import           FDBE.Event                                  (Event (..), KeyWindowEvent (..),
                                                               SearchEvent (..),
@@ -66,7 +70,7 @@ view' State {..} =
             "Foundation DB"
             [ menuItem MenuItem [on #activate (StatusEvent ShowStatus)]
                 $ widget Label [#label := "Database Status", #halign := AlignStart]
-            , menuItem MenuItem [on #activate (KeyWindowEvent NewKeyWindow)]
+            , menuItem MenuItem [onM #activate (const (KeyWindowEvent . NewKeyWindow <$> randomIO))]
                 $ widget Label [#label := "Edit Value at Key", #halign := AlignStart]
             ]
         ]
@@ -79,13 +83,11 @@ view' State {..} =
     statusWindowAttr
       | statusVisible = [statusWindow status]
       | otherwise     = []
-    keyWindowAttrs =
-      Vector.imap
-        (\i w -> window $ KeyWindow.view' i w)
-        (Vector.fromList keyWindows)
+    keyWindowAttrs = Vector.fromList $
+      HashMap.toList keyWindows <&> \(id, w) -> window id (KeyWindow.view' id w)
 
 statusWindow :: Text -> Attribute w Event
-statusWindow status = window $ bin Window
+statusWindow status = window () $ bin Window
   [ #title := "Database Status"
   , on #deleteEvent (const (True, StatusEvent HideStatus))
   , #windowPosition := WindowPositionCenter
@@ -136,39 +138,39 @@ update' state@State {..} = \case
             Transition state (pure Nothing)
 
     updateKeyWindow = \case
-      NewKeyWindow ->
-        updateKeyWindows (State.initialKeyWindow :)
-      UpdateKeyWindowKey i key ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowKey = key, keyWindowOldValue = OperationNotStarted })
-      LoadKeyWindowOldValue i key ->
-        updateKeyWindowAtM i (\w -> Just w { keyWindowOldValue = OperationInProgress }) $ do
+      NewKeyWindow id ->
+        updateKeyWindows (HashMap.insert id State.initialKeyWindow)
+      UpdateKeyWindowKey id key ->
+        updateKeyWindowAt id (\w -> Just w { keyWindowKey = key, keyWindowOldValue = OperationNotStarted })
+      LoadKeyWindowOldValue id key ->
+        updateKeyWindowAtM id (\w -> Just w { keyWindowOldValue = OperationInProgress }) $ do
           op <- getKeyValue database key >>= \case
             Left e    -> pure . OperationFailure . pack $ displayException e
             Right val -> pure $ OperationSuccess val
-          pure . Just . KeyWindowEvent $ UpdateKeyWindowOldValue i op
-      UpdateKeyWindowOldValue i op ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowOldValue = op })
-      UpdateKeyWindowNewValue i val ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowNewValue = val, keyWindowSave = OperationNotStarted })
-      KeyWindowSave i key value ->
-        updateKeyWindowAtM i (\w -> Just w { keyWindowSave = OperationInProgress }) $ do
+          pure . Just . KeyWindowEvent $ UpdateKeyWindowOldValue id op
+      UpdateKeyWindowOldValue id op ->
+        updateKeyWindowAt id (\w -> Just w { keyWindowOldValue = op })
+      UpdateKeyWindowNewValue id val ->
+        updateKeyWindowAt id (\w -> Just w { keyWindowNewValue = val, keyWindowSave = OperationNotStarted })
+      KeyWindowSave id key value ->
+        updateKeyWindowAtM id (\w -> Just w { keyWindowSave = OperationInProgress }) $ do
           op <- setKeyValue database key value >>= \case
             Just e  -> pure . OperationFailure . pack $ displayException e
             Nothing -> pure $ OperationSuccess ()
-          pure . Just . KeyWindowEvent $ UpdateKeyWindowSave i op
-      UpdateKeyWindowSave i op ->
-        updateKeyWindowAt i (\w -> Just w { keyWindowSave = op })
-      CloseKeyWindow i ->
-        updateKeyWindowAt i (const Nothing)
+          pure . Just . KeyWindowEvent $ UpdateKeyWindowSave id op
+      UpdateKeyWindowSave id op ->
+        updateKeyWindowAt id (\w -> Just w { keyWindowSave = op })
+      CloseKeyWindow id ->
+        updateKeyWindowAt id (const Nothing)
 
     updateKeyWindows f =
       Transition state {keyWindows = f keyWindows} (pure Nothing)
 
-    updateKeyWindowAt i f =
-      updateKeyWindows (updateAt i f)
+    updateKeyWindowAt id f =
+      updateKeyWindows (HashMap.update f id)
 
-    updateKeyWindowAtM i f =
-      Transition state {keyWindows = updateAt i f keyWindows}
+    updateKeyWindowAtM id f =
+      Transition state {keyWindows = HashMap.update f id keyWindows}
 
 app :: Database -> App Window State Event
 app db =
