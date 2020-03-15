@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=FoundationDB Explorer
+Comment=A basic viewer/editor for FoundationDB databases.
+Exec=foundationdb-explorer
+Type=Application
+Categories=Development;Utility;Database;
+Icon=foundationdb-explorer

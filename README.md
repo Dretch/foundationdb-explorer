@@ -24,7 +24,7 @@ Experimental - some rough edges and not well tested.
 
 ## Installation
 
-Those with Ubuntu-based systems can try the `.deb` package from the [Github releases page](https://github.com/Dretch/foundationdb-explorer/releases). The executable that gets installed is called `foundationdb-explorer`.
+Those with Ubuntu-based systems can try the `.deb` package from the [Github releases page](https://github.com/Dretch/foundationdb-explorer/releases). A _FoundationDB Explorer_ application should then appear in your desktop environment.
 
 ## Building
 

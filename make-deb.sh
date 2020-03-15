@@ -8,9 +8,11 @@ TAG=${TAG#"v"} # remove "v" prefix
 
 stack build
 rm -rf "$DIR"
-mkdir "$DIR"
+mkdir -p "$DIR/usr/bin" "$DIR/usr/share/applications" "$DIR/usr/share/pixmaps"
 cd "$DIR"
-cp  `stack path --local-install-root`/bin/foundationdb-explorer .
+cp `stack path --local-install-root`/bin/foundationdb-explorer ./usr/bin
+cp ../foundationdb-explorer.desktop ./usr/share/applications
+cp ../icon.png ./usr/share/pixmaps/foundationdb-explorer.png
 
 fpm --input-type dir \
   --output-type deb \
@@ -32,5 +34,4 @@ fpm --input-type dir \
   --depends foundationdb-clients \
   --depends libc6 \
   --depends libgmp10 \
-  --prefix /usr/bin \
-  foundationdb-explorer
+  .
