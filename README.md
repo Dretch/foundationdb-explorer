@@ -1,14 +1,26 @@
 # FoundationDB Explorer
 
-This is a very basic visual data viewer / GUI for [FoundationDB](https://www.foundationdb.org/) databases. You can search by key in raw binary form or by entering a tuple value that is then encoded into binary form. Keys and values in search results are presented in their tuple form when they can be decoded as such.
+This is a very basic visual data viewer / editor / GUI for [FoundationDB](https://www.foundationdb.org/) databases.
 
 Built using (currently a slightly hacked version of) the awesome [gi-gtk-declarative](https://github.com/owickstrom/gi-gtk-declarative/) library.
 
-![Screenshot](./docs/example.png)
+## Features
+
+### Search
+
+Search by key in raw binary form or by entering a tuple value that is then encoded into binary form. Keys and values in search results are presented in their tuple form when they can be decoded as such. 
+
+![Search screenshot](./docs/search.png)
+
+### Edit
+
+You can set, update, or delete the value at a known key. The key and value can be entered either in raw binary form or as a tuple.
+
+![Edit screenshot](./docs/edit.png)
 
 ## Status
 
-Not particularly finished, probably won't work for you, etc.
+Experimental - some rough edges and not well tested.
 
 ## Installation
 
