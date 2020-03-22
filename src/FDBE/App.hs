@@ -109,11 +109,17 @@ update' state@State {..} = \case
   where
     updateStatus = \case
       ShowStatus ->
-        Transition state { statusVisible = True } (pure Nothing)
+        Transition
+          state
+          { status = "", statusVisible = True }
+          (pure (Just (StatusEvent ReloadStatus)))
       HideStatus ->
         Transition state { statusVisible = False } (pure Nothing)
       ReloadStatus ->
-        Transition state $ Just . StatusEvent . SetStatus <$> getStatus database
+        Transition state $
+          if statusVisible
+            then Just . StatusEvent . SetStatus <$> getStatus database
+            else pure Nothing
       SetStatus status' ->
         Transition state {status = status'} (pure Nothing)
 
