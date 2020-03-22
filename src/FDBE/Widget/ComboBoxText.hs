@@ -13,9 +13,8 @@ module FDBE.Widget.ComboBoxText
   , comboBox
   ) where
 
-import           Control.Monad      (forM_, when)
-import           Data.Text          (Text)
-import           Data.Vector        (Vector)
+import           FDBE.Prelude
+
 import qualified Data.Vector        as Vector
 import qualified GI.Gtk             as Gtk
 import           GI.Gtk.Declarative

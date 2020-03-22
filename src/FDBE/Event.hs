@@ -5,8 +5,8 @@ module FDBE.Event
   , KeyWindowEvent(..)
   ) where
 
-import           Data.Sequence   (Seq)
-import           Data.Text       (Text)
+import           FDBE.Prelude
+
 import           Data.Time.Clock (NominalDiffTime)
 
 import           FDBE.State      (EditableBytes, KeyWindowId, Operation (..),

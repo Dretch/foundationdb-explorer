@@ -9,19 +9,12 @@ module FDBE.FoundationDB
   , setKeyValue
   ) where
 
-import           Control.DeepSeq          (force)
-import           Control.Error.Util       (hush)
-import           Control.Exception        (evaluate, try)
-import           Control.Monad.IO.Class   (liftIO)
-import           Data.ByteString          (ByteString)
-import           Data.Either.Combinators  (leftToMaybe)
-import           Data.Sequence            (Seq)
-import           Data.Text                (Text)
+import           FDBE.Prelude
+
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8)
 import           Data.Time.Clock          (NominalDiffTime)
 import qualified Data.Time.Clock          as Clock
-import           Data.Tuple.Extra         (both)
 import           FoundationDB             (Database, Error, Range (..))
 import qualified FoundationDB             as FDB
 import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems,

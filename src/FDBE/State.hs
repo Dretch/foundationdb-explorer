@@ -21,15 +21,11 @@ module FDBE.State
   , maxValueTupleSize
   ) where
 
-import           Data.ByteString          (ByteString)
-import           Data.Hashable            (Hashable)
-import           Data.HashMap.Strict      (HashMap)
 import qualified Data.HashMap.Strict      as HashMap
 import           Data.Sequence            (Seq, ViewR (..))
 import qualified Data.Sequence            as S
-import           Data.Text                (Text)
 import           Data.Time.Clock          (NominalDiffTime, UTCTime)
-import           Data.UUID                (UUID)
+import           FDBE.Prelude
 import           FoundationDB             (Database)
 import           FoundationDB.Layer.Tuple (Elem)
 import           System.Random            (Random)

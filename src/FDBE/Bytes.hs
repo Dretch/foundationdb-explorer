@@ -5,23 +5,18 @@ module FDBE.Bytes
   , bytesToText
   ) where
 
-import           Control.Monad            (void)
+import           FDBE.Prelude
+
 import           Data.Bits                (shiftL, (.|.))
-import           Data.ByteString          (ByteString)
 import qualified Data.ByteString          as B
 import qualified Data.ByteString.Internal as B
 import qualified Data.Char                as Char
 import qualified Data.List                as List
-import           Data.Maybe               (fromMaybe)
-import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (encodeUtf8)
-import           Data.Void                (Void)
-import           Data.Word                (Word8)
 import           Text.Megaparsec          ((<|>))
 import qualified Text.Megaparsec          as M
 import qualified Text.Megaparsec.Char     as MC
-import qualified Text.Printf              as Printf
 
 type Parser = M.Parsec Void Text
 
@@ -57,4 +52,4 @@ bytesToText = T.concat . fmap mapChar . B.unpack
       let c = B.w2c w in
       if Char.isAlphaNum c && Char.isAscii c
         then T.singleton c
-        else T.pack $ Printf.printf "\\x%02x" w
+        else T.pack $ printf "\\x%02x" w

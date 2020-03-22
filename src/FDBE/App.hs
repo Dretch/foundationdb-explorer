@@ -11,14 +11,13 @@ module FDBE.App
   , app
   ) where
 
-import           Prelude                                     hiding (id)
+
+import           FDBE.Prelude
 
 import           Control.Concurrent                          (threadDelay)
 import           Control.Exception                           (displayException)
-import           Data.Either.Extra                           (mapLeft)
-import           Data.Functor                                ((<&>))
 import qualified Data.HashMap.Strict                         as HashMap
-import           Data.Text                                   (Text, pack)
+import           Data.Text                                   (pack)
 import qualified Data.Vector                                 as Vector
 import           FoundationDB                                (Database)
 import           GI.Gtk                                      (Align (..),

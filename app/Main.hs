@@ -3,9 +3,9 @@
 
 module Main where
 
+import           FDBE.Prelude
+
 import           Control.Concurrent.Async      (async)
-import           Control.Monad                 (void)
-import           Data.ByteString               (ByteString)
 import           Data.FileEmbed                (embedFile)
 import qualified FoundationDB                  as FDB
 import qualified GI.Gdk                        as Gdk

@@ -13,14 +13,11 @@ module FDBE.Widget.TupleEntry
   , tupleEntry
   ) where
 
-import           Data.ByteString            (ByteString)
-import           Data.List.Extra            (snoc)
+import           FDBE.Prelude
+
 import           Data.List.Index            (deleteAt, setAt)
-import           Data.Text                  (Text)
 import qualified Data.UUID                  as UUID
-import           Data.Vector                (Vector)
 import qualified Data.Vector                as Vector
-import           Data.Word                  (Word32)
 import           FoundationDB.Layer.Tuple   (Elem)
 import qualified FoundationDB.Layer.Tuple   as LT
 import           FoundationDB.Versionstamp  (TransactionVersionstamp (..),
@@ -31,7 +28,6 @@ import           GI.Gtk                     (Align (..), Box (..), Button (..),
                                              Entry (..), Label (..),
                                              Orientation (..), entryGetText)
 import           GI.Gtk.Declarative
-import           Util                       (uncurry4)
 
 import           FDBE.Bytes                 (bytesToText, textToBytes)
 import qualified FDBE.Widget.ComboBoxBool   as ComboBoxBool
@@ -253,7 +249,7 @@ tupleEntry' elems onChange =
 
         tupleInput :: [Elem] -> Widget event
         tupleInput t =
-          tupleEntry' t $ onElemValueChange id LT.Tuple
+          tupleEntry' t $ onElemValueChange identity LT.Tuple
 
         onElemValueChange :: ((x -> event) -> attr event) -> (x -> Elem) -> Vector (attr event)
         onElemValueChange wrap convert =

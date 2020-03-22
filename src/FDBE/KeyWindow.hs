@@ -7,10 +7,8 @@ module FDBE.KeyWindow
   ( view'
   ) where
 
-import           Prelude                           hiding (id)
+import           FDBE.Prelude
 
-import           Data.Maybe                        (isJust)
-import           Data.Vector                       (Vector)
 import           GI.Gtk                            (Align (..), Box (..),
                                                     Button (..), Frame (..),
                                                     Grid (..), Label (..),

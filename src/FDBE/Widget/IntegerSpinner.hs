@@ -13,10 +13,8 @@ module FDBE.Widget.IntegerSpinner
   , spinner
   ) where
 
-import           Prelude            hiding (max, min)
+import           FDBE.Prelude       hiding (max, min)
 
-import           Control.Monad      (void)
-import           Data.Vector        (Vector)
 import qualified Data.Vector        as Vector
 import qualified GI.Gtk             as Gtk
 import           GI.Gtk.Declarative

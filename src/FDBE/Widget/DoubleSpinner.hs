@@ -10,8 +10,8 @@ module FDBE.Widget.DoubleSpinner
   , spinner
   ) where
 
-import           Control.Monad      (void, when)
-import           Data.Vector        (Vector)
+import           FDBE.Prelude
+
 import qualified Data.Vector        as Vector
 import qualified GI.Gtk             as Gtk
 import           GI.Gtk.Declarative
