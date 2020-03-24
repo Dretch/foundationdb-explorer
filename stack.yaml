@@ -40,7 +40,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - git: "https://github.com/Dretch/gi-gtk-declarative.git"
-  commit: "b10aaddc50c352659510d43d055016f5dffd4123"
+  commit: "09a735aa2f56e90d0bb75e763d32774db5b1707c"
   subdirs:
     - "gi-gtk-declarative"
     - "gi-gtk-declarative-app-simple"

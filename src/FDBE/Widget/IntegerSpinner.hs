@@ -76,12 +76,6 @@ instance CustomAttribute Gtk.SpinButton IntegerSpinner where
       pure ()
     pure state
 
-  attrDestroy _ _ _ =
-    pure ()
-
-  attrSubscribe _ _ _ _ =
-    mempty
-
 setLimits :: Gtk.SpinButton -> IntegerSpinnerProperties -> IO ()
 setLimits spin IntegerSpinnerProperties {min, max, value} = do
   adj <- Gtk.adjustmentNew

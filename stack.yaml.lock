@@ -14,12 +14,12 @@ packages:
     git: https://github.com/Dretch/gi-gtk-declarative.git
     pantry-tree:
       size: 2676
-      sha256: ac718810135db5efe162a47212bb84038b0d22a0d0a8e81b44ea6f1246a137d3
-    commit: b10aaddc50c352659510d43d055016f5dffd4123
+      sha256: 9d1219b2ba42d4334993f16d39c6a8d6a61402e1be1363dbaf36a0eb6d5cce20
+    commit: 09a735aa2f56e90d0bb75e763d32774db5b1707c
   original:
     subdir: gi-gtk-declarative
     git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: b10aaddc50c352659510d43d055016f5dffd4123
+    commit: 09a735aa2f56e90d0bb75e763d32774db5b1707c
 - completed:
     subdir: gi-gtk-declarative-app-simple
     cabal-file:
@@ -31,11 +31,11 @@ packages:
     pantry-tree:
       size: 308
       sha256: b09b097a8aa85e0138a8f24a4ef9b647802b7dee5b3e43c99b1c97c2bf9c2689
-    commit: b10aaddc50c352659510d43d055016f5dffd4123
+    commit: 09a735aa2f56e90d0bb75e763d32774db5b1707c
   original:
     subdir: gi-gtk-declarative-app-simple
     git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: b10aaddc50c352659510d43d055016f5dffd4123
+    commit: 09a735aa2f56e90d0bb75e763d32774db5b1707c
 - completed:
     cabal-file:
       size: 5494

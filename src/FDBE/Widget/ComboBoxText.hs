@@ -68,12 +68,6 @@ instance CustomAttribute Gtk.ComboBoxText ComboBoxText where
       updatePos combo (position new)
     pure state
 
-  attrDestroy _combo _state _decl =
-    pure ()
-
-  attrSubscribe _combo _state _decl =
-    mempty
-
 updatePos :: Gtk.ComboBoxText -> Maybe Int -> IO ()
 updatePos combo position =
   #setActive combo $ maybe (-1) fromIntegral position

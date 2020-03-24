@@ -50,9 +50,3 @@ instance CustomAttribute Gtk.SpinButton DoubleSpinner where
     when (old /= new) $
       void $ Gtk.spinButtonSetValue spin new
     pure state
-
-  attrDestroy _ _ _ =
-    pure ()
-
-  attrSubscribe _ _ _ _ =
-    mempty
