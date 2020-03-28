@@ -17,13 +17,14 @@ import           Data.Time.Clock          (NominalDiffTime)
 import qualified Data.Time.Clock          as Clock
 import           FoundationDB             (Database, Error, Range (..))
 import qualified FoundationDB             as FDB
-import           FoundationDB.Layer.Tuple (Elem (..), decodeTupleElems,
+import           FoundationDB.Layer.Tuple (Elem, decodeTupleElems,
                                            encodeTupleElems)
 import qualified System.Process           as P
 
 import           FDBE.Bytes               (bytesToText, textToBytes)
 import           FDBE.State               (EditableBytes, SearchRange (..),
-                                           SearchResult (..))
+                                           SearchResult (..), fromEditableElem,
+                                           toEditableElem)
 
 getClusterFilePath :: Database -> IO (Maybe Text)
 getClusterFilePath db =
@@ -51,27 +52,27 @@ getSearchResult db SearchRange {..} =
     pure (Clock.diffUTCTime endTime startTime, uncurry SearchResult <$> decodedPairs)
   where
     range = Range
-      { rangeBegin   = FDB.FirstGreaterOrEq $ selectorToBytes searchFrom
-      , rangeEnd     = FDB.FirstGreaterOrEq $ selectorToBytes searchTo
+      { rangeBegin   = FDB.FirstGreaterOrEq $ encodeEditableBytes searchFrom
+      , rangeEnd     = FDB.FirstGreaterOrEq $ encodeEditableBytes searchTo
       , rangeReverse = searchReverse
       , rangeLimit   = Just $ fromIntegral searchLimit
       }
 
-selectorToBytes :: EditableBytes -> ByteString
-selectorToBytes = either textToBytes encodeTupleElems
+encodeEditableBytes :: EditableBytes -> ByteString
+encodeEditableBytes = either textToBytes (encodeTupleElems . fmap fromEditableElem)
 
 decode :: ByteString -> (ByteString, Maybe [Elem])
-decode b = (b, hush $ decodeTupleElems b)
+decode b = (b, hush (decodeTupleElems b))
 
 getKeyValue :: Database -> EditableBytes -> IO (Either Error (Maybe EditableBytes))
 getKeyValue db key =
   try $ do
-    val <- FDB.runTransaction db $ FDB.get (selectorToBytes key) >>= FDB.await
+    val <- FDB.runTransaction db $ FDB.get (encodeEditableBytes key) >>= FDB.await
     case val of
       Nothing ->
         pure Nothing
       Just bs | Right tup <- decodeTupleElems bs ->
-        pure . Just $ Right tup
+        pure . Just . Right $ toEditableElem <$> tup
       Just bs ->
         pure . Just . Left $ bytesToText bs
 
@@ -81,6 +82,6 @@ setKeyValue db key value =
     FDB.runTransaction db $
       case value of
         Nothing ->
-          FDB.clear (selectorToBytes key)
+          FDB.clear (encodeEditableBytes key)
         Just v ->
-          FDB.set (selectorToBytes key) (selectorToBytes v)
+          FDB.set (encodeEditableBytes key) (encodeEditableBytes v)

@@ -18,7 +18,6 @@ import           FDBE.Prelude
 import           Data.List.Index            (deleteAt, setAt)
 import qualified Data.UUID                  as UUID
 import qualified Data.Vector                as Vector
-import           FoundationDB.Layer.Tuple   (Elem)
 import qualified FoundationDB.Layer.Tuple   as LT
 import           FoundationDB.Versionstamp  (TransactionVersionstamp (..),
                                              Versionstamp (..),
@@ -30,15 +29,19 @@ import           GI.Gtk                     (Align (..), Box (..), Button (..),
 import           GI.Gtk.Declarative
 
 import           FDBE.Bytes                 (bytesToText, textToBytes)
+import           FDBE.State                 (EditableBytes, EditableElem (..),
+                                             elemText, fromEditableElem,
+                                             toEditableElem)
 import qualified FDBE.Widget.ComboBoxBool   as ComboBoxBool
 import qualified FDBE.Widget.ComboBoxText   as ComboBoxText
 import qualified FDBE.Widget.DoubleSpinner  as DoubleSpinner
 import qualified FDBE.Widget.IntegerSpinner as IntegerSpinner
+import qualified FDBE.Widget.TextView       as TextView
 
 data TupleEntryAttribute event
   = RawAttribute (Attribute Box event)
-  | Value (Either Text [Elem])
-  | OnChanged (Either Text [Elem] -> event)
+  | Value EditableBytes
+  | OnChanged (EditableBytes -> event)
 
 tupleEntry :: Vector (TupleEntryAttribute event) -> Widget event
 tupleEntry attrs =
@@ -65,11 +68,11 @@ tupleEntry attrs =
     onTypeChange onChange i =
       case (i, value) of
         (0, Right t) ->
-          onChange . Left . bytesToText $ LT.encodeTupleElems t
+          onChange . Left . bytesToText . LT.encodeTupleElems $ fromEditableElem <$> t
         (1, Left t) | Right tup <- LT.decodeTupleElems (textToBytes t) ->
-          onChange $ Right tup
+          onChange . Right $ toEditableElem <$> tup
         (1, Left _) ->
-          onChange $ Right [LT.Text ""]
+          onChange $ Right [SingleLineText ""]
         _ ->
           onChange value
 
@@ -87,12 +90,16 @@ rawEntry text onRawChange =
     , #valign := AlignStart
     ] <> ((\f -> onM #changed (fmap f . entryGetText)) <$> onRawChange)
 
-tupleEntry' :: forall event. [Elem] -> Vector ([Elem] -> event) -> Widget event
+tupleEntry'
+  :: forall event
+   . [EditableElem]
+  -> Vector ([EditableElem] -> event)
+  -> Widget event
 tupleEntry' elems onChange =
   container Box [#orientation := OrientationVertical, #spacing := 2]
     $ Vector.imap elemEntry (Vector.fromList elems) `Vector.snoc` addElemButton
   where
-    elemEntry :: Int -> Elem -> BoxChild event
+    elemEntry :: Int -> EditableElem -> BoxChild event
     elemEntry i field =
       BoxChild defaultBoxChildProperties $
         container Box [#spacing := 2]
@@ -108,6 +115,7 @@ tupleEntry' elems onChange =
                 [ "None"
                 , "Bytes"
                 , "Text"
+                , "Text (long)"
                 , "Int"
                 , "Float"
                 , "Double"
@@ -125,35 +133,38 @@ tupleEntry' elems onChange =
             [ #label := "Remove"
             ] <> ((\f -> on #clicked (f $ deleteAt i elems)) <$> onChange)
 
+        position :: Int
+        input :: Widget event
         (position, input) = case field of
-          LT.None           -> (0, noneInput)
-          LT.Bytes bs       -> (1, bytesInput bs)
-          LT.Text t         -> (2, textInput t)
-          LT.Int x          -> (3, intInput $ fromIntegral x)
-          LT.Float f        -> (4, floatInput f)
-          LT.Double d       -> (5, doubleInput d)
-          LT.Bool b         -> (6, boolInput b)
-          LT.UUID a b c d   -> (7, uuidInput a b c d)
-          LT.CompleteVS vs  -> (8, completeVsInput vs)
-          LT.IncompleteVS _ -> (8, completeVsInput minBound)
-          LT.Tuple t        -> (9, tupleInput t)
+          None             -> (0, noneInput)
+          Bytes bs         -> (1, bytesInput bs)
+          SingleLineText t -> (2, singleLineTextInput t)
+          MultiLineText t  -> (3, multiLineTextInput t)
+          Int x            -> (4, intInput $ fromIntegral x)
+          Float f          -> (5, floatInput f)
+          Double d         -> (6, doubleInput d)
+          Bool b           -> (7, boolInput b)
+          UUID a b c d     -> (8, uuidInput a b c d)
+          CompleteVS vs    -> (9, completeVsInput vs)
+          IncompleteVS _   -> (9, completeVsInput minBound)
+          Tuple t          -> (10, tupleInput t)
 
-        onElemTypeChange :: Int -> [Elem]
-        onElemTypeChange typePos =
-          let newField =
-                case typePos of
-                  0 -> LT.None
-                  1 -> LT.Bytes ""
-                  2 -> LT.Text ""
-                  3 -> LT.Int 0
-                  4 -> LT.Float 0
-                  5 -> LT.Double 0
-                  6 -> LT.Bool False
-                  7 -> LT.UUID 0 0 0 0
-                  8 -> LT.CompleteVS minBound
-                  9 -> LT.Tuple []
-                  _ -> error "invalid tuple element type position"
-            in setAt i newField elems
+        onElemTypeChange :: Int -> [EditableElem]
+        onElemTypeChange typePos = setAt i newField elems
+          where
+            newField = case typePos of
+              0  -> None
+              1  -> Bytes ""
+              2  -> SingleLineText (fromMaybe "" (elemText field))
+              3  -> MultiLineText (fromMaybe "" (elemText field))
+              4  -> Int 0
+              5  -> Float 0
+              6  -> Double 0
+              7  -> Bool False
+              8  -> UUID 0 0 0 0
+              9  -> CompleteVS minBound
+              10 -> Tuple []
+              _  -> error "invalid tuple element type position - this is a bug"
 
         noneInput :: Widget event
         noneInput =
@@ -166,39 +177,47 @@ tupleEntry' elems onChange =
             , #tooltipText := escapeSyntaxHelp
             , #hexpand := True
             , #valign := AlignStart
-            ] <> onElemValueChangeM (onM #changed) (fmap (LT.Bytes . textToBytes) . entryGetText)
+            ] <> onElemValueChangeM (onM #changed) (fmap (Bytes . textToBytes) . entryGetText)
 
-        textInput :: Text -> Widget event
-        textInput t =
+        singleLineTextInput :: Text -> Widget event
+        singleLineTextInput t =
           widget Entry $
             [ #text := t
             , #hexpand := True
             , #valign := AlignStart
-            ] <> onElemValueChangeM (onM #changed) (fmap LT.Text . entryGetText)
+            ] <> onElemValueChangeM (onM #changed) (fmap SingleLineText . entryGetText)
+
+        multiLineTextInput :: Text -> Widget event
+        multiLineTextInput t =
+          TextView.textView $
+            [ TextView.RawAttribute (#hexpand := True)
+            , TextView.RawAttribute (#valign := AlignStart)
+            , TextView.Value t
+            ] <> onElemValueChange TextView.OnChanged MultiLineText
 
         boolInput :: Bool -> Widget event
         boolInput b =
           ComboBoxBool.comboBox $
             [ ComboBoxBool.Position b
-            ] <> onElemValueChange ComboBoxBool.OnChanged LT.Bool
+            ] <> onElemValueChange ComboBoxBool.OnChanged Bool
 
         floatInput :: Float -> Widget event
         floatInput f =
           DoubleSpinner.spinner $
             [ DoubleSpinner.Value (realToFrac f)
-            ] <> onElemValueChange DoubleSpinner.OnChanged (LT.Float . realToFrac)
+            ] <> onElemValueChange DoubleSpinner.OnChanged (Float . realToFrac)
 
         doubleInput :: Double -> Widget event
         doubleInput d =
           DoubleSpinner.spinner $
             [ DoubleSpinner.Value d
-            ] <> onElemValueChange DoubleSpinner.OnChanged LT.Double
+            ] <> onElemValueChange DoubleSpinner.OnChanged Double
 
         intInput :: Integer -> Widget event
         intInput x =
           IntegerSpinner.spinner $
             [ IntegerSpinner.Value (fromIntegral x :: Int)
-            ] <> onElemValueChange IntegerSpinner.OnChanged (LT.Int . fromIntegral)
+            ] <> onElemValueChange IntegerSpinner.OnChanged (Int . fromIntegral)
 
         uuidInput :: Word32 -> Word32 -> Word32 -> Word32 -> Widget event
         uuidInput a b c d =
@@ -208,7 +227,7 @@ tupleEntry' elems onChange =
             ] <> (onM #focusOutEvent . onFocusOut <$> onChange)
           where
             uuid = UUID.fromWords a b c d
-            onFocusOut :: ([Elem] -> event) -> EventFocus -> Entry -> IO (Bool, event)
+            onFocusOut :: ([EditableElem] -> event) -> EventFocus -> Entry -> IO (Bool, event)
             onFocusOut onChange' _ entry = do
               text <- #getText entry
               newUuid <- case UUID.fromText text of
@@ -218,7 +237,7 @@ tupleEntry' elems onChange =
                   -- the user entered an invalid UUID, so don't save it
                   #setText entry $ UUID.toText uuid
                   pure uuid
-              let uuidElem = uncurry4 LT.UUID . UUID.toWords $ newUuid
+              let uuidElem = uncurry4 UUID . UUID.toWords $ newUuid
               pure (False, onChange' $ setAt i uuidElem elems)
 
         completeVsInput :: Versionstamp 'Complete -> Widget event
@@ -227,15 +246,15 @@ tupleEntry' elems onChange =
             [ label "Tx:"
             , spin $ IntegerSpinner.spinner $
                 [ IntegerSpinner.Value tx
-                ] <> onElemValueChange IntegerSpinner.OnChanged (LT.CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch)
+                ] <> onElemValueChange IntegerSpinner.OnChanged (CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch)
             , label "Batch:"
             , spin $ IntegerSpinner.spinner $
                 [ IntegerSpinner.Value batch
-                ] <> onElemValueChange IntegerSpinner.OnChanged (LT.CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx)
+                ] <> onElemValueChange IntegerSpinner.OnChanged (CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx)
             , label "User:"
             , spin $ IntegerSpinner.spinner $
                 [ IntegerSpinner.Value usr
-                ] <> onElemValueChange IntegerSpinner.OnChanged (LT.CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch))
+                ] <> onElemValueChange IntegerSpinner.OnChanged (CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch))
             ]
             where
               label t = BoxChild
@@ -247,19 +266,19 @@ tupleEntry' elems onChange =
                 , child
                 }
 
-        tupleInput :: [Elem] -> Widget event
+        tupleInput :: [EditableElem] -> Widget event
         tupleInput t =
-          tupleEntry' t $ onElemValueChange identity LT.Tuple
+          tupleEntry' t $ onElemValueChange identity Tuple
 
-        onElemValueChange :: ((x -> event) -> attr event) -> (x -> Elem) -> Vector (attr event)
+        onElemValueChange :: ((x -> event) -> attr event) -> (x -> EditableElem) -> Vector (attr event)
         onElemValueChange wrap convert =
           (\f -> wrap (f . replaceElem . convert)) <$> onChange
 
-        onElemValueChangeM :: ((x -> IO event) -> attr event) -> (x -> IO Elem) -> Vector (attr event)
+        onElemValueChangeM :: ((x -> IO event) -> attr event) -> (x -> IO EditableElem) -> Vector (attr event)
         onElemValueChangeM wrap convert =
           (\f -> wrap (fmap (f . replaceElem) . convert)) <$> onChange
 
-        replaceElem :: Elem -> [Elem]
+        replaceElem :: EditableElem -> [EditableElem]
         replaceElem newElem =
           setAt i newElem elems
 
@@ -269,7 +288,7 @@ tupleEntry' elems onChange =
         widget Button $
         [ #label := "Add Element"
         , #halign := AlignStart
-        ] <> ((\f -> on #clicked (f $ elems `snoc` LT.Text "")) <$> onChange)
+        ] <> ((\f -> on #clicked (f $ elems `snoc` SingleLineText "")) <$> onChange)
 
 escapeSyntaxHelp :: Text
 escapeSyntaxHelp =

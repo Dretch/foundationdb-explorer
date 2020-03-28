@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE NamedFieldPuns             #-}
@@ -7,6 +10,10 @@ module FDBE.State
   ( Operation(..)
   , operationSuccess
   , EditableBytes
+  , EditableElem(..)
+  , fromEditableElem
+  , toEditableElem
+  , elemText
   , State(..)
   , Search(..)
   , SearchRange(..)
@@ -21,14 +28,17 @@ module FDBE.State
   , maxValueTupleSize
   ) where
 
-import qualified Data.HashMap.Strict      as HashMap
-import           Data.Sequence            (Seq, ViewR (..))
-import qualified Data.Sequence            as S
-import           Data.Time.Clock          (NominalDiffTime, UTCTime)
 import           FDBE.Prelude
-import           FoundationDB             (Database)
-import           FoundationDB.Layer.Tuple (Elem)
-import           System.Random            (Random)
+
+import qualified Data.HashMap.Strict       as HashMap
+import qualified Data.Sequence             as S
+import qualified Data.Text                 as T
+import           Data.Time.Clock           (NominalDiffTime, UTCTime)
+import           FoundationDB              (Database)
+import           FoundationDB.Layer.Tuple  (Elem)
+import qualified FoundationDB.Layer.Tuple  as LT
+import qualified FoundationDB.Versionstamp as LV
+import           System.Random             (Random)
 
 data State =
   State
@@ -42,7 +52,24 @@ data State =
 -- | A bytestring (foundationdb key or value) can be edited either as raw bytes
 -- (as ASCII text, with escape codes for binary), or as a structured tuple (if
 -- the bytes can be decoded as a tuple)
-type EditableBytes = Either Text [Elem]
+type EditableBytes = Either Text [EditableElem]
+
+-- | Like a FoundationDB Tuple Elem, but distinguishes between single and multi-line
+-- text so they can be edited with different types of text entry widget.
+data EditableElem
+  = None
+  | Tuple [EditableElem]
+  | Bytes ByteString
+  | SingleLineText Text
+  | MultiLineText Text
+  | Int Integer
+  | Float Float
+  | Double Double
+  | Bool Bool
+  | UUID Word32 Word32 Word32 Word32
+  | CompleteVS (LV.Versionstamp 'LV.Complete)
+  | IncompleteVS (LV.Versionstamp 'LV.Incomplete)
+  deriving (Eq, Generic)
 
 -- | Some kind of operation that takes time, and that we want to update the UI
 -- about before it has been completed. E.g. loading/saving database keys.
@@ -90,7 +117,8 @@ data SearchResult =
   deriving (Eq)
 
 newtype KeyWindowId = KeyWindowId UUID
-  deriving (Eq, Hashable, Random)
+  deriving (Generic)
+  deriving newtype (Eq, Hashable, Random)
 
 data KeyWindow =
   KeyWindow
@@ -134,13 +162,73 @@ maxKeyTupleSize = maxTupleSize . fmap resultKey
 maxValueTupleSize :: Seq SearchResult -> Maybe Integer
 maxValueTupleSize = maxTupleSize . fmap resultValue
 
-maxTupleSize :: Seq (ByteString, Maybe [Elem]) -> Maybe Integer
+maxTupleSize :: Seq (ByteString, Maybe [e]) -> Maybe Integer
 maxTupleSize rows =
   case S.viewr $ S.sort $ fmap length . snd <$> rows of
-    S.EmptyR -> Nothing
-    _ :> a   -> fromIntegral <$> a
+    EmptyR -> Nothing
+    _ :> a -> fromIntegral <$> a
 
 operationSuccess :: Operation a -> Maybe a
 operationSuccess = \case
   OperationSuccess a -> Just a
   _ -> Nothing
+
+toEditableElem:: Elem -> EditableElem
+toEditableElem = \case
+  LT.None ->
+    None
+  LT.Tuple elems ->
+    Tuple (toEditableElem <$> elems)
+  LT.Bytes bs ->
+    Bytes bs
+  LT.Text t | T.any (\c -> c == '\n' || c == '\r') t ->
+    MultiLineText t
+  LT.Text t ->
+    SingleLineText t
+  LT.Int i ->
+    Int i
+  LT.Float f ->
+    Float f
+  LT.Double d ->
+    Double d
+  LT.Bool b ->
+    Bool b
+  LT.UUID a b c d ->
+    UUID a b c d
+  LT.CompleteVS vs ->
+    CompleteVS vs
+  LT.IncompleteVS vs ->
+    IncompleteVS vs
+
+fromEditableElem :: EditableElem -> Elem
+fromEditableElem = \case
+  None ->
+    LT.None
+  Tuple elems ->
+    LT.Tuple (fromEditableElem <$> elems)
+  Bytes bs ->
+    LT.Bytes bs
+  MultiLineText t ->
+    LT.Text t
+  SingleLineText t ->
+    LT.Text t
+  Int i ->
+    LT.Int i
+  Float f ->
+    LT.Float f
+  Double d ->
+    LT.Double d
+  Bool b ->
+    LT.Bool b
+  UUID a b c d ->
+    LT.UUID a b c d
+  CompleteVS vs ->
+    LT.CompleteVS vs
+  IncompleteVS vs ->
+    LT.IncompleteVS vs
+
+elemText :: EditableElem -> Maybe Text
+elemText = \case
+  SingleLineText t -> Just t
+  MultiLineText t  -> Just t
+  _                -> Nothing
