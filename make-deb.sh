@@ -14,6 +14,14 @@ cp `stack path --local-install-root`/bin/foundationdb-explorer ./usr/bin
 cp ../foundationdb-explorer.desktop ./usr/share/applications
 cp ../icon.png ./usr/share/pixmaps/foundationdb-explorer.png
 
+# lovely hack to find out what debian packages our executable needs
+DEPENDS=$(dpkg --search `readelf -d ./usr/bin/foundationdb-explorer | egrep --only-matching '[^[]+\.so\.[^]]'` \
+ | egrep --only-matching '^[^ :]+' \
+ | sort \
+ | uniq \
+ | xargs -L 1 echo --depends)
+
+
 fpm --input-type dir \
   --output-type deb \
   --version "$TAG" \
@@ -22,16 +30,5 @@ fpm --input-type dir \
   --vendor '' \
   --maintainer '' \
   --url "https://github.com/Dretch/foundationdb-haskell" \
-  --depends libgtk-3-0 \
-  --depends libpangocairo-1.0-0 \
-  --depends libpango-1.0-0 \
-  --depends libatk1.0-0 \
-  --depends libcairo-gobject2 \
-  --depends libgdk-pixbuf2.0-0 \
-  --depends libglib2.0-0 \
-  --depends libgirepository-1.0-1 \
-  --depends zlib1g \
-  --depends foundationdb-clients \
-  --depends libc6 \
-  --depends libgmp10 \
+  $DEPENDS \
   .
