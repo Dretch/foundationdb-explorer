@@ -19,10 +19,11 @@ dependencies:
 - gi-gobject
 - gi-gtk
 - gi-gtk-declarative
-- gi-gtk-declarative-app-simple
+- gi-gtk-declarative-components
 - hashable
 - ilist
 - megaparsec
+- mtl
 - pipes
 - process
 - random

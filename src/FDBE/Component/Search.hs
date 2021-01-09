@@ -5,21 +5,26 @@
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TypeFamilies      #-}
 
-module FDBE.Search
-  ( view'
+module FDBE.Component.Search
+  ( Search(..)
   ) where
 
 import           FDBE.Prelude
 
+import           Control.Exception                           (displayException)
+import           Control.Monad.State.Class                   (get, gets, modify)
 import           Data.Foldable                               as Foldable
 import qualified Data.Sequence                               as S
 import qualified Data.Text                                   as T
+import           Data.Time                                   (NominalDiffTime, UTCTime)
 import           Data.Time.Clock                             (getCurrentTime)
 import qualified Data.UUID                                   as UUID
 import qualified Data.Vector                                 as Vector
-import           FoundationDB.Layer.Tuple                    (Elem)
+import           FoundationDB (Database)
 import qualified FoundationDB.Layer.Tuple                    as LT
+import           FoundationDB.Layer.Tuple                    (Elem)
 import           FoundationDB.Versionstamp                   (TransactionVersionstamp (..),
                                                               Versionstamp (..))
 import           GI.Gtk                                      (Align (..),
@@ -36,120 +41,179 @@ import           GI.Gtk                                      (Align (..),
 import           GI.Gtk.Declarative
 import           GI.Gtk.Declarative.Attributes.Custom.Window (presentWindow,
                                                               window)
+import           GI.Gtk.Declarative.Components
 import           GI.Gtk.Declarative.Container.Grid
 
 import           FDBE.Bytes                                  (bytesToText)
-import           FDBE.Event                                  (Event (..),
-                                                              SearchEvent (..))
-import           FDBE.State                                  (Operation (..),
-                                                              Search (..),
-                                                              SearchRange (..),
-                                                              SearchResult (..),
-                                                              SearchResults (..),
-                                                              SearchResultsViewFull (..),
-                                                              maxKeyTupleSize,
-                                                              maxValueTupleSize)
-import qualified FDBE.Widget.IntegerSpinner                  as IntegerSpinner
-import qualified FDBE.Widget.TupleEntry                      as TupleEntry
+import           FDBE.FoundationDB                           (getSearchResult, SearchRange(..), SearchResult(..))
+import           FDBE.State                                  (Operation (..))
+import qualified FDBE.Component.TupleEntry                   as TupleEntry
+import qualified FDBE.Component.IntegerSpinner               as IntegerSpinner
 
-view' :: Search -> Widget Event
-view' Search {searchRange = searchRange@SearchRange {..}, ..} =
-  container
-    Grid
-    ([ #orientation := OrientationVertical
-    , #margin := 4
-    , #rowSpacing := 4
-    , #columnSpacing := 4
-    ] <> windows searchResults)
-    [ GridChild
-        { properties = defaultGridChildProperties
-        , child =
-            widget Label [#label := "From", #marginTop := 6, #halign := AlignEnd, #valign := AlignStart]
-        }
-    , GridChild
-        { properties = defaultGridChildProperties {leftAttach = 1}
-        , child =
-            TupleEntry.tupleEntry
-              [ TupleEntry.RawAttribute $ #sensitive := activateInputs
-              , TupleEntry.Value searchFrom
-              , TupleEntry.OnChanged (\s -> SearchEvent $ SetSearchRange searchRange {searchFrom = s})
-              ]
-        }
-    , GridChild
-        { properties = defaultGridChildProperties {topAttach = 1}
-        , child =
-            widget Label [#label := "To", #marginTop := 6, #halign := AlignEnd, #valign := AlignStart]
-        }
-    , GridChild
-        { properties =
-            defaultGridChildProperties {topAttach = 1, leftAttach = 1}
-        , child =
-          TupleEntry.tupleEntry
-              [ TupleEntry.RawAttribute $ #sensitive := activateInputs
-              , TupleEntry.Value searchTo
-              , TupleEntry.OnChanged (\s -> SearchEvent $ SetSearchRange searchRange {searchTo = s})
-              ]
-        }
-    , GridChild
-        { properties = defaultGridChildProperties {topAttach = 2}
-        , child = widget Label [#label := "Limit", #halign := AlignEnd]
-        }
-    , GridChild
-        { properties =
-            defaultGridChildProperties {topAttach = 2, leftAttach = 1}
-        , child =
-            IntegerSpinner.spinner
-              [ IntegerSpinner.RawAttribute (#sensitive := activateInputs)
-              , IntegerSpinner.Value searchLimit
-              , IntegerSpinner.OnChanged (\v -> SearchEvent $ SetSearchRange searchRange { searchLimit = v })
-              ]
-        }
-    , GridChild
-        { properties = defaultGridChildProperties {topAttach = 3, leftAttach = 1}
-        , child =
-            widget CheckButton
-              [ #label := "Reverse Order"
-              , #active := searchReverse
-              , #sensitive := activateInputs
-              , onM #toggled (fmap (\b -> SearchEvent $ SetSearchRange searchRange { searchReverse = b }) . #getActive)
-              ]
-        }
-    , GridChild
-        { properties = defaultGridChildProperties {topAttach = 4, width = 2}
-        , child =
-            widget
-              Button
-              [ #label := "Fetch"
-              , #halign := AlignEnd
-              , on #clicked (SearchEvent StartSearch)
-              , #sensitive := activateInputs
-              ]
-        }
-    , GridChild
-        { properties = defaultGridChildProperties {topAttach = 5, width = 2}
-        , child = results searchResults
-        }
-    , GridChild
-        { properties = defaultGridChildProperties {topAttach = 6, width = 2}
-        , child = statusbar searchResults
-        }
-    ]
-  where
-    activateInputs = searchResults /= OperationInProgress
+newtype Search event = Search Database
 
-windows :: Operation SearchResults -> Vector (Attribute widget Event)
+data SearchResults =
+  SearchResults
+    { searchDuration :: NominalDiffTime
+    , searchSeq      :: Seq SearchResult
+    , searchViewFull :: Maybe SearchResultsViewFull
+    }
+  deriving (Eq)
+
+data SearchResultsViewFull =
+  SearchResultsViewFull
+    { viewFullText :: Text
+    , viewFullTime :: UTCTime
+    }
+  deriving (Eq)
+
+instance Component Search where
+
+  data ComponentState Search = SearchState
+    { searchRange   :: SearchRange
+    , searchResults :: Operation SearchResults
+    }
+  
+  data ComponentAction Search
+    = SetSearchRange SearchRange
+    | StartSearch
+    | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
+    | SetSearchResultsViewFull (Maybe SearchResultsViewFull)
+
+  createComponent (Search _) =
+    ( SearchState 
+        { searchRange =
+            SearchRange
+              { searchFrom = Left ""
+              , searchTo = Left "\\xFF"
+              , searchLimit = 100
+              , searchReverse = False
+              }
+        , searchResults = OperationNotStarted
+        }
+    , Nothing
+    )
+
+  patchComponent state (Search _) =
+    state
+  
+  update (Search database) = \case
+    SetSearchRange range -> do
+      modify $ \state -> state {searchRange = range}
+    StartSearch -> do
+      modify $ \state -> state {searchResults = OperationInProgress}
+      SearchState{..} <- get
+      updateIO $ do
+        res <- getSearchResult database searchRange
+        pure . Just . FinishSearch $ mapLeft (T.pack . displayException) res
+    FinishSearch results' -> do
+      let mkSuccess (searchDuration, searchSeq) =
+            OperationSuccess SearchResults {searchViewFull = Nothing, ..}
+          searchResults = either OperationFailure mkSuccess results'
+      modify $ \state -> state {searchResults}
+    SetSearchResultsViewFull viewFull -> do
+      gets searchResults >>= \case
+        OperationSuccess SearchResults {..} ->
+          modify $ \state ->
+            state { searchResults = OperationSuccess SearchResults {searchViewFull = viewFull, ..}}
+        _ ->
+          pure ()
+  
+  view (Search _) SearchState{searchRange = searchRange@SearchRange {..}, ..} =
+    container
+      Grid
+      ([ #orientation := OrientationVertical
+      , #margin := 4
+      , #rowSpacing := 4
+      , #columnSpacing := 4
+      ] <> windows searchResults)
+      [ GridChild
+          { properties = defaultGridChildProperties
+          , child =
+              widget Label [#label := "From", #marginTop := 6, #halign := AlignEnd, #valign := AlignStart]
+          }
+      , GridChild
+          { properties = defaultGridChildProperties {leftAttach = 1}
+          , child = component TupleEntry.tupleEntry
+              { TupleEntry.sensitive = activateInputs
+              , TupleEntry.value = searchFrom
+              , TupleEntry.onChanged = Just (\s -> SetSearchRange searchRange {searchFrom = s})
+              }
+          }
+      , GridChild
+          { properties = defaultGridChildProperties {topAttach = 1}
+          , child =
+              widget Label [#label := "To", #marginTop := 6, #halign := AlignEnd, #valign := AlignStart]
+          }
+      , GridChild
+          { properties =
+              defaultGridChildProperties {topAttach = 1, leftAttach = 1}
+          , child = component TupleEntry.tupleEntry
+                { TupleEntry.sensitive = activateInputs
+                , TupleEntry.value = searchTo
+                , TupleEntry.onChanged = Just (\s -> SetSearchRange searchRange {searchTo = s})
+                }
+          }
+      , GridChild
+          { properties = defaultGridChildProperties {topAttach = 2}
+          , child = widget Label [#label := "Limit", #halign := AlignEnd]
+          }
+      , GridChild
+          { properties =
+              defaultGridChildProperties {topAttach = 2, leftAttach = 1}
+          , child =
+              component IntegerSpinner.integerSpinner
+                { IntegerSpinner.rawAttributes = [#sensitive := activateInputs]
+                , IntegerSpinner.value = searchLimit
+                , IntegerSpinner.onChanged = Just (\v -> SetSearchRange searchRange { searchLimit = v })
+                }
+          }
+      , GridChild
+          { properties = defaultGridChildProperties {topAttach = 3, leftAttach = 1}
+          , child =
+              widget CheckButton
+                [ #label := "Reverse Order"
+                , #active := searchReverse
+                , #sensitive := activateInputs
+                , onM #toggled (fmap (\b -> SetSearchRange searchRange { searchReverse = b }) . #getActive)
+                ]
+          }
+      , GridChild
+          { properties = defaultGridChildProperties {topAttach = 4, width = 2}
+          , child =
+              widget
+                Button
+                [ #label := "Fetch"
+                , #halign := AlignEnd
+                , on #clicked StartSearch
+                , #sensitive := activateInputs
+                ]
+          }
+      , GridChild
+          { properties = defaultGridChildProperties {topAttach = 5, width = 2}
+          , child = results searchResults
+          }
+      , GridChild
+          { properties = defaultGridChildProperties {topAttach = 6, width = 2}
+          , child = statusbar searchResults
+          }
+      ]
+    where
+      activateInputs = searchResults /= OperationInProgress
+
+windows :: Operation SearchResults -> Vector (Attribute widget (ComponentAction Search))
 windows = \case
   OperationSuccess SearchResults { searchViewFull = Just res } -> [window () (mkWindow res)]
   _ -> []
   where
-    mkWindow :: SearchResultsViewFull -> Bin Window Event
+    mkWindow :: SearchResultsViewFull -> Bin Window (ComponentAction Search)
     mkWindow SearchResultsViewFull {..} =
       bin Window
         [ #widthRequest := 600
         , #heightRequest := 400
         , #windowPosition := WindowPositionCenter
         , #title := "View full text"
-        , on #deleteEvent (const (True, SearchEvent $ SetSearchResultsViewFull Nothing))
+        , on #deleteEvent (const (True, SetSearchResultsViewFull Nothing))
         , presentWindow viewFullTime
         ]
         (bin ScrolledWindow
@@ -166,7 +230,7 @@ windows = \case
           )
         )
 
-results :: Operation SearchResults -> Widget Event
+results :: Operation SearchResults -> Widget (ComponentAction Search)
 results =
   \case
     OperationNotStarted -> widget Label []
@@ -181,11 +245,11 @@ results =
           Vector.fromList $ zip [0 ..] (Foldable.toList rows)
 
 resultRow ::
-     Integer -> Integer -> (Int32, SearchResult) -> Vector (GridChild Event)
+     Integer -> Integer -> (Int32, SearchResult) -> Vector (GridChild (ComponentAction Search))
 resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
   Vector.fromList $ keyCells <> [eqCell] <> valueCells
   where
-    eqCell :: GridChild Event
+    eqCell :: GridChild (ComponentAction Search)
     eqCell =
       GridChild
         { properties =
@@ -193,12 +257,12 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               {topAttach = rowN, leftAttach = fromIntegral keyWidth}
         , child = widget Label [#label := "=", classes ["equals-cell"]]
         }
-    keyCells :: [GridChild Event]
+    keyCells :: [GridChild (ComponentAction Search)]
     keyCells =
       case resultKey of
         (t, Nothing) -> [rawCell keyWidth 0 t]
         (_, Just ts) -> zipWith (\i t -> elemCell i (tupleHelp i) t) [0 ..] ts
-    valueCells :: [GridChild Event]
+    valueCells :: [GridChild (ComponentAction Search)]
     valueCells =
       case resultValue of
         (t, Nothing) -> [rawCell valueWidth (keyWidth + 1) t]
@@ -207,7 +271,7 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
             (\i t -> elemCell (keyWidth + 1 + i) (tupleHelp i) t)
             [0 ..]
             ts
-    rawCell :: Integer -> Integer -> ByteString -> GridChild Event
+    rawCell :: Integer -> Integer -> ByteString -> GridChild (ComponentAction Search)
     rawCell width leftAttach label =
       GridChild
         { properties =
@@ -222,7 +286,7 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
               (bytesToText label)
               "Raw binary data (can't decode as tuple)"
         }
-    elemCell :: Integer -> Text -> Elem -> GridChild Event
+    elemCell :: Integer -> Text -> Elem -> GridChild (ComponentAction Search)
     elemCell leftAttach tooltipPrefix elm =
       GridChild
         { properties =
@@ -234,7 +298,7 @@ resultRow keyWidth valueWidth (rowN, SearchResult {..}) =
         , child = elemToWidget rowN tooltipPrefix elm
         }
 
-elemToWidget :: Int32 -> Text -> Elem -> Widget Event
+elemToWidget :: Int32 -> Text -> Elem -> Widget (ComponentAction Search)
 elemToWidget rowN tooltipPrefix =
   \case
     LT.None -> w "null" "null value"
@@ -255,16 +319,16 @@ elemToWidget rowN tooltipPrefix =
         [#spacing := 2, classes ["result-tuple"]]
         (Vector.fromList $ zipWith tupleChild [0 ..] es)
   where
-    w :: Text -> Text -> Widget Event
+    w :: Text -> Text -> Widget (ComponentAction Search)
     w label tooltip = resultLabel rowN label (tooltipPrefix <> tooltip)
-    tupleChild :: Integer -> Elem -> BoxChild Event
+    tupleChild :: Integer -> Elem -> BoxChild (ComponentAction Search)
     tupleChild i e =
       BoxChild
         { child = elemToWidget rowN (tooltipPrefix <> tupleHelp i) e
         , properties = defaultBoxChildProperties {expand = True, fill = True}
         }
 
-resultLabel :: Int32 -> Text -> Text -> Widget Event
+resultLabel :: Int32 -> Text -> Text -> Widget (ComponentAction Search)
 resultLabel rowN label tooltip =
   case trim label of
     Nothing ->
@@ -292,16 +356,15 @@ resultLabel rowN label tooltip =
       , #halign := AlignStart
       ]
     cls
-      | rowN `mod` 2 == 0 = ["result-cell", "result-cell-stripe"]
+      | even rowN = ["result-cell", "result-cell-stripe"]
       | otherwise = ["result-cell"]
     onViewFullClicked _button = do
       viewFullTime <- getCurrentTime
       pure
-        $ SearchEvent
         $ SetSearchResultsViewFull
         $ Just SearchResultsViewFull { viewFullTime, viewFullText = label }
 
-statusbar :: Operation SearchResults -> Widget Event
+statusbar :: Operation SearchResults -> Widget (ComponentAction Search)
 statusbar res = widget Label [#label := label, #halign := AlignStart]
   where
     label
@@ -323,3 +386,15 @@ trim t
     trim' s
       | T.length s <= 50 = s
       | otherwise = T.take 47 s
+
+maxKeyTupleSize :: Seq SearchResult -> Maybe Integer
+maxKeyTupleSize = maxTupleSize . fmap resultKey
+
+maxValueTupleSize :: Seq SearchResult -> Maybe Integer
+maxValueTupleSize = maxTupleSize . fmap resultValue
+
+maxTupleSize :: Seq (ByteString, Maybe [e]) -> Maybe Integer
+maxTupleSize rows =
+  case S.viewr $ S.sort $ fmap length . snd <$> rows of
+    EmptyR -> Nothing
+    _ :> a -> fromIntegral <$> a

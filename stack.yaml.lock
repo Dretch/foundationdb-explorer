@@ -6,40 +6,31 @@
 packages:
 - completed:
     subdir: gi-gtk-declarative
-    cabal-file:
-      size: 4624
-      sha256: 036c501d5a290d039498eac6704a0423df395a638a05e8e891ba960a222eaad6
     name: gi-gtk-declarative
     version: 0.6.3
     git: https://github.com/Dretch/gi-gtk-declarative.git
     pantry-tree:
-      size: 2675
-      sha256: b16312dcd30e71104a7b1caaacf933d807aea6229af3be749f602cf71f12af41
-    commit: e29a3b31292c5729e093de38542fa4ca3a500a8d
+      size: 2748
+      sha256: b623c2f898ce363ec348ecf418a3b9c1b119b40885bcce4cbb3c60a1d98b589b
+    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
   original:
     subdir: gi-gtk-declarative
     git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: e29a3b31292c5729e093de38542fa4ca3a500a8d
+    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
 - completed:
-    subdir: gi-gtk-declarative-app-simple
-    cabal-file:
-      size: 2287
-      sha256: 94b5d54e2fa19f340456f925769c562b44b46b7a26ffc48a6a2980d822e7a36e
-    name: gi-gtk-declarative-app-simple
+    subdir: gi-gtk-declarative-components
+    name: gi-gtk-declarative-components
     version: 0.6.3
     git: https://github.com/Dretch/gi-gtk-declarative.git
     pantry-tree:
-      size: 361
-      sha256: 8303c9c08ad6e6759f36514d41705919931c67f4d35a8cecd5335088b0389459
-    commit: e29a3b31292c5729e093de38542fa4ca3a500a8d
+      size: 257
+      sha256: 205a3a279e975d7daa53d12415d48b5e4383481eaca02d02b0db713c277f18de
+    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
   original:
-    subdir: gi-gtk-declarative-app-simple
+    subdir: gi-gtk-declarative-components
     git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: e29a3b31292c5729e093de38542fa4ca3a500a8d
+    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
 - completed:
-    cabal-file:
-      size: 5494
-      sha256: 906c3a8fb5ca75e86bf5f46c9a39ccc0f2672552a67427288618e9cdbd15e404
     name: foundationdb-haskell
     version: 0.1.0.0
     git: https://github.com/crclark/foundationdb-haskell
@@ -52,7 +43,7 @@ packages:
     commit: 9053373fdffb49d6350b359f5720ee1f89b61bad
 snapshots:
 - completed:
-    size: 524996
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/27.yaml
-    sha256: 7ea31a280c56bf36ff591a7397cc384d0dff622e7f9e4225b47d8980f019a0f0
-  original: lts-14.27
+    size: 532381
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/11.yaml
+    sha256: 1f43c4ad661a114a4f9dd4580988f30da1208d844c097714f5867c52a02e0aa1
+  original: lts-16.11

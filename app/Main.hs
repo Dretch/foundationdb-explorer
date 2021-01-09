@@ -5,17 +5,15 @@ module Main where
 
 import           FDBE.Prelude
 
-import qualified Control.Concurrent.Async                    as Async
-import           Control.Exception                           (finally)
 import           Data.FileEmbed                              (embedFile)
 import qualified FoundationDB                                as FDB
 import qualified GI.Gdk                                      as Gdk
 import qualified GI.Gtk                                      as Gtk
-import           GI.Gtk.Declarative.App.Simple               (runLoop)
+import           GI.Gtk.Declarative.Components               (runWith)
 import           GI.Gtk.Declarative.Attributes.Custom.Window (IconData (..),
                                                               setDefaultIcon)
 
-import           FDBE.App                                    (app)
+import           FDBE.App                                    (App(..))
 
 styles :: ByteString
 styles = $(embedFile "styles.css")
@@ -25,12 +23,8 @@ icon = IconDataBytes $(embedFile "icon.png")
 
 main :: IO ()
 main = do
-  void (Gtk.init Nothing)
-  setDefaultIcon icon
-  setupStyleSheet
-  main' <- Async.async Gtk.main
-  FDB.withFoundationDB FDB.defaultOptions (void . runLoop . app)
-    `finally` (Gtk.mainQuit >> Async.wait main')
+  FDB.withFoundationDB FDB.defaultOptions $ \db ->
+    runWith (setDefaultIcon icon >> setupStyleSheet) (App db)
 
 setupStyleSheet :: IO ()
 setupStyleSheet = do
