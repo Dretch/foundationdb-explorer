@@ -12,11 +12,11 @@ packages:
     pantry-tree:
       size: 2748
       sha256: b623c2f898ce363ec348ecf418a3b9c1b119b40885bcce4cbb3c60a1d98b589b
-    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
+    commit: d396a31420e6f6222ac974831df980f71c24cef4
   original:
     subdir: gi-gtk-declarative
     git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
+    commit: d396a31420e6f6222ac974831df980f71c24cef4
 - completed:
     subdir: gi-gtk-declarative-components
     name: gi-gtk-declarative-components
@@ -24,12 +24,12 @@ packages:
     git: https://github.com/Dretch/gi-gtk-declarative.git
     pantry-tree:
       size: 257
-      sha256: 205a3a279e975d7daa53d12415d48b5e4383481eaca02d02b0db713c277f18de
-    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
+      sha256: 3803da92247f4507ca68fe8e029164a7af4d54ab05c36a1fe28e98d76c7425a9
+    commit: d396a31420e6f6222ac974831df980f71c24cef4
   original:
     subdir: gi-gtk-declarative-components
     git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: e2a712802478aaf32b34ea9ea9032d48c69f355d
+    commit: d396a31420e6f6222ac974831df980f71c24cef4
 - completed:
     name: foundationdb-haskell
     version: 0.1.0.0
