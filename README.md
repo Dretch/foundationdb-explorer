@@ -1,3 +1,5 @@
+![CI](https://github.com/Dretch/foundationdb-explorer/workflows/CI/badge.svg)
+
 # FoundationDB Explorer
 
 This is a very basic visual data viewer / editor / GUI for [FoundationDB](https://www.foundationdb.org/) databases.
