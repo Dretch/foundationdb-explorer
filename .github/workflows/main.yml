@@ -12,6 +12,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - uses: mstksg/setup-stack@v2
+      env:
+        # Workaround https://github.com/mstksg/setup-stack/issues/13
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
     - run: docker build docker -t foundationdb-explorer:latest
     
