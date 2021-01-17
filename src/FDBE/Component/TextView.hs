@@ -19,7 +19,7 @@ import           FDBE.Prelude
 import qualified GI.GObject                     as GI
 import qualified GI.Gtk                         as Gtk
 import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Components
+import           GI.Gtk.Declarative.Component
 import           GI.Gtk.Declarative.EventSource (fromCancellation)
 
 data TextView event = TextView

@@ -15,7 +15,7 @@ import Control.Monad.State.Class                   (put)
 import FoundationDB                                (Database)
 import GI.Gtk                                      (Align (..), Label (..))
 import GI.Gtk.Declarative
-import GI.Gtk.Declarative.Components
+import GI.Gtk.Declarative.Component
 
 import FDBE.FoundationDB                           (getStatus)
 

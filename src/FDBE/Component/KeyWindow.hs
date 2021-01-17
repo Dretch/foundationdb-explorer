@@ -26,7 +26,7 @@ import           GI.Gtk                            (Align (..), Box (..),
                                                     Grid (..), Label (..),
                                                     Orientation (..))
 import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Components
+import           GI.Gtk.Declarative.Component
 import           GI.Gtk.Declarative.Container.Grid (GridChild (..),
                                                     GridChildProperties (..),
                                                     defaultGridChildProperties)

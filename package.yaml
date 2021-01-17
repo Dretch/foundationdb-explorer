@@ -19,7 +19,6 @@ dependencies:
 - gi-gobject
 - gi-gtk
 - gi-gtk-declarative
-- gi-gtk-declarative-components
 - hashable
 - ilist
 - megaparsec

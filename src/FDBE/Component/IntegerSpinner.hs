@@ -19,7 +19,7 @@ import           FDBE.Prelude                  hiding (max, min)
 
 import qualified GI.Gtk                        as Gtk
 import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Components
+import           GI.Gtk.Declarative.Component
 
 data IntegerSpinner val event = IntegerSpinner
   { rawAttributes :: forall e. Vector (Attribute Gtk.SpinButton e)

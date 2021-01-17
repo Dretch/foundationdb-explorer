@@ -41,7 +41,7 @@ import           GI.Gtk                                      (Align (..),
 import           GI.Gtk.Declarative
 import           GI.Gtk.Declarative.Attributes.Custom.Window (presentWindow,
                                                               window)
-import           GI.Gtk.Declarative.Components
+import           GI.Gtk.Declarative.Component
 import           GI.Gtk.Declarative.Container.Grid
 
 import           FDBE.Bytes                                  (bytesToText)

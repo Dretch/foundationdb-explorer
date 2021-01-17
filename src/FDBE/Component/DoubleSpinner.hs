@@ -15,7 +15,7 @@ import           FDBE.Prelude
 
 import qualified GI.Gtk                        as Gtk
 import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Components
+import           GI.Gtk.Declarative.Component
 
 data DoubleSpinner event = DoubleSpinner
   { value :: Double

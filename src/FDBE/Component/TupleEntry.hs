@@ -30,7 +30,7 @@ import           GI.Gtk                        (Align (..), Box (..), Button (..
                                                 Entry (..), Label (..),
                                                 Orientation (..), entryGetText)
 import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Components
+import           GI.Gtk.Declarative.Component
 
 import           FDBE.Bytes                    (bytesToText, textToBytes)
 import           FDBE.FoundationDB             (EditableBytes, EditableElem(..), fromEditableElem, toEditableElem, elemText)

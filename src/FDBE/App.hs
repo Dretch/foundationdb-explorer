@@ -26,7 +26,7 @@ import           GI.Gtk                                      (Align (..),
                                                               Window (..),
                                                               WindowPosition (..))
 import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Components
+import           GI.Gtk.Declarative.Component
 import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
 import           System.Random                               (randomIO)
 
@@ -34,7 +34,7 @@ import           FDBE.Component.KeyWindow
 import           FDBE.Component.Search
 import           FDBE.Component.StatusWindow
 
-data App event = App Database (AppAction -> event)
+data App event = App Database (AppAction () -> event)
 
 instance Component App where
 
@@ -60,7 +60,7 @@ instance Component App where
   
   update (App _db cb) = \case
     Close ->
-      updateParent (cb Exit)
+      updateParent (cb $ Exit ())
     ShowStatus ->
       modify (\s -> s{ statusVisible = True })
     HideStatus ->
