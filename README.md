@@ -1,4 +1,4 @@
-![CI](https://github.com/Dretch/foundationdb-explorer/workflows/CI/badge.svg)
+[![CI](https://github.com/Dretch/foundationdb-explorer/workflows/CI/badge.svg)](https://github.com/Dretch/foundationdb-explorer/actions)
 
 # FoundationDB Explorer
 
