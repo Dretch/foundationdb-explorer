@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: nightly-2021-01-05
+resolver: lts-17.0
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,7 +40,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - git: "https://github.com/Dretch/gi-gtk-declarative.git"
-  commit: "b2b342819b07bdf129dbcdd349af5396318fb8ec"
+  commit: "7c48c488bb2ef4453518d45cd6ddb7bdf70cd926"
   subdirs:
     - "gi-gtk-declarative"
 - git: "https://github.com/crclark/foundationdb-haskell"

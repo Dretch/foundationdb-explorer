@@ -12,11 +12,11 @@ packages:
     pantry-tree:
       size: 3007
       sha256: 31491c678d8c83e2de10163f1eae9dd83b12e7cfd15acfcdf9879afb081122d7
-    commit: b2b342819b07bdf129dbcdd349af5396318fb8ec
+    commit: 7c48c488bb2ef4453518d45cd6ddb7bdf70cd926
   original:
     subdir: gi-gtk-declarative
     git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: b2b342819b07bdf129dbcdd349af5396318fb8ec
+    commit: 7c48c488bb2ef4453518d45cd6ddb7bdf70cd926
 - completed:
     name: foundationdb-haskell
     version: 0.1.0.0
@@ -30,7 +30,7 @@ packages:
     commit: 9053373fdffb49d6350b359f5720ee1f89b61bad
 snapshots:
 - completed:
-    size: 562051
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2021/1/5.yaml
-    sha256: be105362ec57d665ea17fa574ab195c49bb1f9a5bd9016174ef83cd368fba253
-  original: nightly-2021-01-05
+    size: 563100
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/17/0.yaml
+    sha256: e93a85871577ea3423d5f3454b2b6bd37c2c2123c79faf511dfb64f5b49a9f8b
+  original: lts-17.0
