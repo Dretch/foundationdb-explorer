@@ -9,7 +9,7 @@ import           Data.FileEmbed                              (embedFile)
 import qualified FoundationDB                                as FDB
 import qualified GI.Gdk                                      as Gdk
 import qualified GI.Gtk                                      as Gtk
-import           GI.Gtk.Declarative.Component                (runWith)
+import           GI.Gtk.Declarative.Component                (AppAction(..), runWith)
 import           GI.Gtk.Declarative.Attributes.Custom.Window (IconData (..),
                                                               setDefaultIcon)
 
@@ -24,7 +24,7 @@ icon = IconDataBytes $(embedFile "icon.png")
 main :: IO ()
 main = do
   FDB.withFoundationDB FDB.defaultOptions $ \db ->
-    runWith (setDefaultIcon icon >> setupStyleSheet) (App db id)
+    runWith (setDefaultIcon icon >> setupStyleSheet) App{ database = db, exitEvent = Exit () }
 
 setupStyleSheet :: IO ()
 setupStyleSheet = do

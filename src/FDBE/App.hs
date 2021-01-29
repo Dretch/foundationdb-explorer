@@ -9,7 +9,6 @@ module FDBE.App
   ( App(..)
   ) where
 
-
 import           FDBE.Prelude
 
 import           Control.Monad.State.Class                   (modify)
@@ -34,7 +33,10 @@ import           FDBE.Component.KeyWindow
 import           FDBE.Component.Search
 import           FDBE.Component.StatusWindow
 
-data App event = App Database (AppAction () -> event)
+data App event = App
+  { database :: Database
+  , exitEvent :: event
+  }
 
 instance Component App where
 
@@ -50,7 +52,7 @@ instance Component App where
     | NewKeyWindow KeyWindowId
     | CloseKeyWindow KeyWindowId
 
-  createComponent (App _db _cb) =
+  createComponent App{} =
     ( AppState
         { statusVisible = False
         , keyWindows = mempty
@@ -58,9 +60,9 @@ instance Component App where
     , Nothing
     )
   
-  update (App _db cb) = \case
+  update App{..} = \case
     Close ->
-      updateParent (cb $ Exit ())
+      updateParent exitEvent
     ShowStatus ->
       modify (\s -> s{ statusVisible = True })
     HideStatus ->
@@ -70,7 +72,7 @@ instance Component App where
     CloseKeyWindow id ->
       modify (\state -> state { keyWindows = HashSet.delete id (keyWindows state) })
   
-  view (App database _cb) AppState{..} =
+  view App{..} AppState{..} =
     bin
       Window
       ([ #title := "FoundationDB Explorer"
