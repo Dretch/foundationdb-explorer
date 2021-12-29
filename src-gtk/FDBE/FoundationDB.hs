@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module FDBE.FoundationDB
   ( getClusterFilePath
@@ -13,13 +13,7 @@ module FDBE.FoundationDB
   , fromEditableElem
   , elemText
   , SearchRange(..)
-  , searchFrom
-  , searchTo
-  , searchLimit
-  , searchReverse
   , SearchResult(..)
-  , resultKey
-  , resultValue
   , getSearchResult
   , getKeyValue
   , setKeyValue
@@ -27,12 +21,11 @@ module FDBE.FoundationDB
 
 import           FDBE.Prelude
 
-import Control.Lens hiding (both)
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8)
 import           Data.Time.Clock          (NominalDiffTime)
 import qualified Data.Time.Clock          as Clock
-import           FoundationDB             (Database, Error, RangeQuery (..))
+import           FoundationDB             (Database, Error, Range (..))
 import qualified FoundationDB             as FDB
 import           FoundationDB.Layer.Tuple (Elem, decodeTupleElems,
                                            encodeTupleElems)
@@ -74,7 +67,7 @@ data EditableElem
   | UUID Word32 Word32 Word32 Word32
   | CompleteVS (LV.Versionstamp 'LV.Complete)
   | IncompleteVS (LV.Versionstamp 'LV.Incomplete)
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Generic)
 
 toEditableElem:: Elem -> EditableElem
 toEditableElem = \case
@@ -130,7 +123,6 @@ fromEditableElem = \case
   IncompleteVS vs ->
     LT.IncompleteVS vs
 
--- | Extracts the text from textual EditableElems
 elemText :: EditableElem -> Maybe Text
 elemText = \case
   SingleLineText t -> Just t
@@ -139,22 +131,18 @@ elemText = \case
 
 data SearchRange =
   SearchRange
-    { _searchFrom    :: EditableBytes
-    , _searchTo      :: EditableBytes
-    , _searchLimit   :: Word
-    , _searchReverse :: Bool
+    { searchFrom    :: EditableBytes
+    , searchTo      :: EditableBytes
+    , searchLimit   :: Word
+    , searchReverse :: Bool
     }
-  deriving (Eq, Show)
 
 data SearchResult =
   SearchResult
-    { _resultKey   :: (ByteString, Maybe [Elem])
-    , _resultValue :: (ByteString, Maybe [Elem])
+    { resultKey   :: (ByteString, Maybe [Elem])
+    , resultValue :: (ByteString, Maybe [Elem])
     }
-  deriving (Eq, Show)
-
-makeLenses ''SearchRange
-makeLenses ''SearchResult
+  deriving (Eq)
 
 getSearchResult
   :: Database
@@ -169,11 +157,11 @@ getSearchResult db SearchRange {..} =
     endTime <- Clock.getCurrentTime
     pure (Clock.diffUTCTime endTime startTime, uncurry SearchResult <$> decodedPairs)
   where
-    range = RangeQuery
-      { rangeBegin   = FDB.FirstGreaterOrEq $ encodeEditableBytes _searchFrom
-      , rangeEnd     = FDB.FirstGreaterOrEq $ encodeEditableBytes _searchTo
-      , rangeReverse = _searchReverse
-      , rangeLimit   = Just $ fromIntegral _searchLimit
+    range = Range
+      { rangeBegin   = FDB.FirstGreaterOrEq $ encodeEditableBytes searchFrom
+      , rangeEnd     = FDB.FirstGreaterOrEq $ encodeEditableBytes searchTo
+      , rangeReverse = searchReverse
+      , rangeLimit   = Just $ fromIntegral searchLimit
       }
 
 encodeEditableBytes :: EditableBytes -> ByteString

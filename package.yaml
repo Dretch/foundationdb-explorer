@@ -1,5 +1,5 @@
 name:                foundationdb-explorer
-version:             0.0.1.0
+version:             0.0.2.0
 license:             WTFPL
 
 dependencies:
@@ -14,19 +14,18 @@ dependencies:
 - extra
 - file-embed
 - foundationdb-haskell
-- gi-gdk
-- gi-glib
-- gi-gobject
-- gi-gtk
-- gi-gtk-declarative
 - hashable
 - ilist
+- lens
 - megaparsec
+- monomer
 - mtl
 - pipes
 - process
 - random
+- split
 - text
+- text-show
 - time
 - unordered-containers
 - util
@@ -37,6 +36,7 @@ library:
   source-dirs: src
   default-extensions:
     - NoImplicitPrelude
+    - OverloadedStrings
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
 
 executables:

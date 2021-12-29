@@ -5,32 +5,37 @@
 
 packages:
 - completed:
-    subdir: gi-gtk-declarative
-    name: gi-gtk-declarative
-    version: 0.6.3
-    git: https://github.com/Dretch/gi-gtk-declarative.git
+    hackage: nanovg-0.8.0.0@sha256:aa8d2864d17daae3ba8c834ea523d805b8a68414e9ba1df00b102b89348ec954,4914
     pantry-tree:
-      size: 3007
-      sha256: 31491c678d8c83e2de10163f1eae9dd83b12e7cfd15acfcdf9879afb081122d7
-    commit: 7c48c488bb2ef4453518d45cd6ddb7bdf70cd926
+      size: 2558
+      sha256: f179e5e90a4f58c23bc989979721b1246836e7db0213fb8d7aa5dc3b7d1de791
   original:
-    subdir: gi-gtk-declarative
-    git: https://github.com/Dretch/gi-gtk-declarative.git
-    commit: 7c48c488bb2ef4453518d45cd6ddb7bdf70cd926
+    hackage: nanovg-0.8.0.0
+- completed:
+    name: monomer
+    version: 1.2.0.0
+    git: https://github.com/fjvallarino/monomer.git
+    pantry-tree:
+      size: 17177
+      sha256: ee01b1f99fb21f61a0472957e35bd9dfeb6ab6f043de67509e46e354b112de4a
+    commit: 8e3d676e1acf1555c876b19dba9497414d934579
+  original:
+    git: https://github.com/fjvallarino/monomer.git
+    commit: 8e3d676e1acf1555c876b19dba9497414d934579
 - completed:
     name: foundationdb-haskell
     version: 0.1.0.0
     git: https://github.com/crclark/foundationdb-haskell
     pantry-tree:
-      size: 2590
-      sha256: 7d4b1c7308c8384c57cfe8a515630383f7b80141ee71547a02b322568fee0a79
-    commit: 9053373fdffb49d6350b359f5720ee1f89b61bad
+      size: 9030
+      sha256: ef3f776543310467bc85a35fb6dc57ebbedae9333c9a4257598ba0aa26e30be4
+    commit: 15ab9678457ebd6986e31217213bcb2748d06134
   original:
     git: https://github.com/crclark/foundationdb-haskell
-    commit: 9053373fdffb49d6350b359f5720ee1f89b61bad
+    commit: 15ab9678457ebd6986e31217213bcb2748d06134
 snapshots:
 - completed:
-    size: 563100
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/17/0.yaml
-    sha256: e93a85871577ea3423d5f3454b2b6bd37c2c2123c79faf511dfb64f5b49a9f8b
-  original: lts-17.0
+    size: 587113
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/6.yaml
+    sha256: f74c482d7c93739ecf3abfbc0f2dea1c20a2dfb2462c689846ed55a9653b66f7
+  original: lts-18.6

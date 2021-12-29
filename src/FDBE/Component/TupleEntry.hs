@@ -1,324 +1,265 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE NamedFieldPuns      #-}
-{-# LANGUAGE OverloadedLabels    #-}
-{-# LANGUAGE OverloadedLists     #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE LambdaCase       #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DataKinds #-}
 
 -- | A component for editing foundationdb tuples
 module FDBE.Component.TupleEntry
-  ( TupleEntry(..)
-  , tupleEntry
+  ( tupleEntry
   ) where
 
-import           FDBE.Prelude
+import FDBE.Prelude
+import FDBE.FoundationDB
+import FDBE.Bytes (textToBytes, bytesToText)
 
-import           Data.Foldable                 (for_)
-import           Data.List.Index               (deleteAt, setAt)
-import qualified Data.UUID                     as UUID
-import qualified Data.Vector                   as Vector
-import qualified FoundationDB.Layer.Tuple      as LT
-import           FoundationDB.Versionstamp     (TransactionVersionstamp (..),
-                                                Versionstamp (..),
-                                                VersionstampCompleteness (..))
-import           GI.Gdk                        (EventFocus)
-import           GI.Gtk                        (Align (..), Box (..), Button (..),
-                                                Entry (..), Label (..),
-                                                Orientation (..), entryGetText)
-import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Component
+import Data.List.Index (deleteAt, imap, setAt)
+import Monomer
+import GHC.Float (double2Float, float2Double)
+import qualified FoundationDB.Layer.Tuple as LT
+import qualified Data.UUID as UUID
+import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp), VersionstampCompleteness (Complete))
 
-import           FDBE.Bytes                    (bytesToText, textToBytes)
-import           FDBE.FoundationDB             (EditableBytes, EditableElem(..), fromEditableElem, toEditableElem, elemText)
-import qualified FDBE.Component.ComboBoxBool   as ComboBoxBool
-import qualified FDBE.Component.ComboBoxText   as ComboBoxText
-import qualified FDBE.Component.IntegerSpinner as IntegerSpinner
-import qualified FDBE.Component.TextView       as TextView
-import qualified FDBE.Component.DoubleSpinner  as DoubleSpinner
-
-data TupleEntry event = TupleEntry
-  { value :: EditableBytes
-  , onChanged :: Maybe (EditableBytes -> event)
-  , sensitive :: Bool
-  }
-
--- | The default TupleEntry
-tupleEntry :: TupleEntry event
-tupleEntry = TupleEntry
-  { value = Left ""
-  , onChanged = Nothing
-  , sensitive = True
-  }
-
-type Event = ComponentAction TupleEntry
-
-instance Component TupleEntry where
-
-  data ComponentState TupleEntry = TupleEntryState
-
-  data ComponentAction TupleEntry =  TupleValueChanged EditableBytes
-
-  createComponent _decl =
-    (TupleEntryState, Nothing)
-  
-  patchComponent state _decl =
-    state
-  
-  update TupleEntry{..} = \case
-    TupleValueChanged x ->
-      for_ onChanged $ \f ->
-        updateParent (f x)
-
-  view TupleEntry{..} _state =
-    container Box [#spacing := 2, #hexpand := True, #sensitive := sensitive]
-      [ BoxChild defaultBoxChildProperties combo
-      , BoxChild defaultBoxChildProperties { expand = True, fill = True } entry
+tupleEntry
+ :: forall s e. (WidgetModel s, WidgetEvent e)
+ => EditableBytes
+ -> (EditableBytes -> e)
+ -> WidgetNode s e
+tupleEntry s ebChange = tree where
+    tree = hstack [
+        textDropdownSV (getEditAs s) (ebChange . setEditAs s) [EditAsRaw, EditAsTuple],
+        spacer,
+        editor
       ]
-    where
-      combo :: Widget (ComponentAction TupleEntry)
-      combo = component ComboBoxText.comboBoxText
-        { ComboBoxText.rawAttributes = [#valign := AlignStart]
-        , ComboBoxText.choices = ["Raw", "Tuple"]
-        , ComboBoxText.position = Just comboIndex
-        , ComboBoxText.onChanged = Just (TupleValueChanged . onTypeChange)
-        }
 
-      comboIndex = either (const 0) (const 1) value
+    editor = case s of
+      Left t ->
+        tooltip escapeSyntaxHelp (textFieldV t (ebChange . Left))
+      Right elems ->
+        tupleEntry' elems (ebChange . Right)
 
-      onTypeChange i =
-        case (i, value) of
-          (0, Right t) ->
-            Left . bytesToText . LT.encodeTupleElems $ fromEditableElem <$> t
-          (1, Left t) | Right tup <- LT.decodeTupleElems (textToBytes t) ->
-            Right $ toEditableElem <$> tup
-          (1, Left _) ->
-            Right [SingleLineText ""]
-          _ ->
-            value
-
-      entry :: Widget Event
-      entry =
-        case value of
-          Left text   -> rawEntry text
-          Right elems -> tupleEntry' elems (TupleValueChanged . Right)
-
-rawEntry :: Text -> Widget Event
-rawEntry text =
-  widget Entry
-    [ #text := text
-    , #tooltipText := escapeSyntaxHelp
-    , #hexpand := True
-    , #valign := AlignStart
-    , onM #changed (fmap (TupleValueChanged . Left) . entryGetText)
-    ]
-
-tupleEntry' :: [EditableElem] -> ([EditableElem] -> Event) -> Widget Event
-tupleEntry' elems onChanged =
-  container Box [#orientation := OrientationVertical, #spacing := 2]
-    $ Vector.imap elemEntry (Vector.fromList elems) `Vector.snoc` addElemButton
+tupleEntry'
+ :: forall s e. (WidgetModel s, WidgetEvent e)
+ => [EditableElem]
+ -> ([EditableElem] -> e)
+ -> WidgetNode s e
+tupleEntry' elems elmsChange =
+    vstack $
+      imap elemEntry elems <> [addElemButton]
   where
-    elemEntry :: Int -> EditableElem -> BoxChild Event
-    elemEntry i field =
-      BoxChild defaultBoxChildProperties $
-        container Box [#spacing := 2]
-          [ BoxChild defaultBoxChildProperties combo
-          , BoxChild defaultBoxChildProperties { expand = True, fill = True } input
-          , BoxChild defaultBoxChildProperties removeButton
-          ]
-      where
-        combo :: Widget Event
-        combo =
-          component ComboBoxText.comboBoxText
-            { ComboBoxText.choices =
-                [ "None"
-                , "Bytes"
-                , "Text"
-                , "Text (long)"
-                , "Int"
-                , "Float"
-                , "Double"
-                , "Bool"
-                , "UUID"
-                , "Versionstamp"
-                , "Tuple"
-                ]
-            , ComboBoxText.position = Just position
-            , ComboBoxText.onChanged = Just (onChanged . onElemTypeChange)
-            }
 
-        removeButton :: Widget Event
-        removeButton =
-          widget Button
-            [ #label := "Remove"
-            , on #clicked (onChanged (deleteAt i elems))
-            ]
+    elemEntry :: Int -> EditableElem -> WidgetNode s e
+    elemEntry i elm = elemTree where
+      elemTree = hstack [
+          elemTypeCombo,
+          spacer,
+          elemInput,
+          spacer,
+          removeElemButton
+        ]
 
-        position :: Int
-        input :: Widget Event
-        (position, input) = case field of
-          None             -> (0, noneInput)
-          Bytes bs         -> (1, bytesInput bs)
-          SingleLineText t -> (2, singleLineTextInput t)
-          MultiLineText t  -> (3, multiLineTextInput t)
-          Int x            -> (4, intInput $ fromIntegral x)
-          Float f          -> (5, floatInput f)
-          Double d         -> (6, doubleInput d)
-          Bool b           -> (7, boolInput b)
-          UUID a b c d     -> (8, uuidInput a b c d)
-          CompleteVS vs    -> (9, completeVsInput vs)
-          IncompleteVS _   -> (9, completeVsInput minBound)
-          Tuple t          -> (10, tupleInput t)
+      elemTypeCombo =
+        textDropdownSV (getElemType elm) (\et -> elmsChange (setAt i (setElemType elm et) elems)) (enumFrom None')
 
-        onElemTypeChange :: Int -> [EditableElem]
-        onElemTypeChange typePos = setAt i newField elems
-          where
-            newField = case typePos of
-              0  -> None
-              1  -> Bytes ""
-              2  -> SingleLineText (fromMaybe "" (elemText field))
-              3  -> MultiLineText (fromMaybe "" (elemText field))
-              4  -> Int 0
-              5  -> Float 0
-              6  -> Double 0
-              7  -> Bool False
-              8  -> UUID 0 0 0 0
-              9  -> CompleteVS minBound
-              10 -> Tuple []
-              _  -> error "invalid tuple element type position - this is a bug"
+      elemInput = case elm of
+        None             -> noneInput
+        Bytes b          -> bytesInput b
+        SingleLineText t -> singleLineTextInput t
+        MultiLineText t  -> multiLineTextInput t
+        Int x            -> intInput x
+        Float f          -> floatInput f
+        Double d         -> doubleInput d
+        Bool b           -> boolInput b
+        UUID a b c d     -> uuidInput a b c d
+        CompleteVS vs    -> completeVSInput vs
+        IncompleteVS _   -> completeVSInput minBound
+        Tuple t          -> tupleInput t
 
-        noneInput :: Widget Event
-        noneInput =
-          widget Label []
+      noneInput =
+        label ""
+      
+      bytesInput b =
+        -- todo: fix weirdness
+        tooltip escapeSyntaxHelp $
+          textFieldV (bytesToText b) (onElemChange . Bytes . textToBytes)
 
-        bytesInput :: ByteString -> Widget Event
-        bytesInput bs =
-          widget Entry
-            [ #text := bytesToText bs
-            , #tooltipText := escapeSyntaxHelp
-            , #hexpand := True
-            , #valign := AlignStart
-            , onM #changed (fmap (replaceElemOnChanged . Bytes . textToBytes) . entryGetText)
-            ]
+      singleLineTextInput t =
+        textFieldV t (onElemChange . SingleLineText)
+      
+      multiLineTextInput t =
+        textAreaV t (onElemChange . MultiLineText)
 
-        singleLineTextInput :: Text -> Widget Event
-        singleLineTextInput t =
-          widget Entry
-            [ #text := t
-            , #hexpand := True
-            , #valign := AlignStart
-            , onM #changed (fmap (replaceElemOnChanged . SingleLineText) . entryGetText)
-            ]
+      intInput x =
+        numericFieldV_ x (onElemChange . Int) [wheelRate 10]
 
-        multiLineTextInput :: Text -> Widget Event
-        multiLineTextInput t =
-          component TextView.textView
-            { TextView.rawAttributes = [#hexpand := True]
-            , TextView.value = t
-            , TextView.onChanged = Just (replaceElemOnChanged . MultiLineText)
-            }
+      floatInput f =
+        numericFieldV_ f (onElemChange . Float) [wheelRate 10]
+      
+      doubleInput d =
+        numericFieldV_ d (onElemChange . Double) [wheelRate 10]
+      
+      boolInput b =
+        textDropdownSV b (onElemChange . Bool) [False, True]
+      
+      -- todo: make less weird!
+      uuidInput a b c d =
+        -- maxlength, replacemode? validity check?
+        textFieldD_ (WidgetValue (UUID.toText uuid)) [maxLength 36, onChange onChangeEvt]
+        where
+          uuid = UUID.fromWords a b c d
+          onChangeEvt t =
+            -- if the user entered an invalid UUID then don't save it
+            let newUuid = fromMaybe uuid (UUID.fromText t)
+                uuidElem = uncurry4 UUID . UUID.toWords $ newUuid
+            in onElemChange uuidElem
+      
+      completeVSInput :: Versionstamp 'Complete -> WidgetNode s e
+      completeVSInput (CompleteVersionstamp (TransactionVersionstamp tx batch) usr) =
+        hstack [
+          label "Tx:",
+          spacer,
+          numericFieldV_ tx (onElemChange . CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch) [wheelRate 10],
+          spacer,
+          label "Batch:",
+          spacer,
+          numericFieldV_ batch (onElemChange . CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx) [wheelRate 10],
+          spacer,
+          label "User:",
+          spacer,
+          numericFieldV_ usr (onElemChange . CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch)) [wheelRate 10]
+        ]
+      
+      tupleInput t =
+        tupleEntry' t (onElemChange . Tuple)
+      
+      onElemChange newVal =
+          elmsChange (setAt i newVal elems)
 
-        boolInput :: Bool -> Widget Event
-        boolInput b =
-          component $ ComboBoxBool.comboBoxBool b (Just (replaceElemOnChanged . Bool))
+      removeElemButton =
+          button "Remove" (elmsChange (deleteAt i elems))
 
-        floatInput :: Float -> Widget Event
-        floatInput f =
-          component DoubleSpinner.doubleSpinner
-            { DoubleSpinner.value = realToFrac f
-            , DoubleSpinner.onChanged = Just (replaceElemOnChanged . Float . realToFrac)
-            }
-
-        doubleInput :: Double -> Widget Event
-        doubleInput d =
-          component DoubleSpinner.doubleSpinner
-            { DoubleSpinner.value = d
-            , DoubleSpinner.onChanged = Just (replaceElemOnChanged . Double)
-            }
-
-        intInput :: Integer -> Widget Event
-        intInput x =
-          component IntegerSpinner.integerSpinner
-            { IntegerSpinner.value = fromIntegral x :: Int
-            , IntegerSpinner.onChanged =  Just (replaceElemOnChanged . Int . fromIntegral)
-            }
-
-        uuidInput :: Word32 -> Word32 -> Word32 -> Word32 -> Widget Event
-        uuidInput a b c d =
-          widget Entry
-            [ #overwriteMode := True
-            , #text := UUID.toText uuid
-            , onM #focusOutEvent onFocusOut
-            ]
-          where
-            uuid = UUID.fromWords a b c d
-            onFocusOut :: EventFocus -> Entry -> IO (Bool, Event)
-            onFocusOut _ entry = do
-              text <- #getText entry
-              newUuid <- case UUID.fromText text of
-                Just uuid' ->
-                  pure uuid'
-                Nothing -> do
-                  -- the user entered an invalid UUID, so don't save it
-                  #setText entry $ UUID.toText uuid
-                  pure uuid
-              let uuidElem = uncurry4 UUID . UUID.toWords $ newUuid
-              pure (False, replaceElemOnChanged uuidElem)
-
-        completeVsInput :: Versionstamp 'Complete -> Widget Event
-        completeVsInput (CompleteVersionstamp (TransactionVersionstamp tx batch) usr) =
-          container Box [#spacing := 4]
-            [ label "Tx:"
-            , spin $ component IntegerSpinner.integerSpinner
-                { IntegerSpinner.value = tx
-                , IntegerSpinner.onChanged = Just (replaceElemOnChanged . CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch)
-                }
-            , label "Batch:"
-            , spin $ component IntegerSpinner.integerSpinner
-                { IntegerSpinner.value = batch
-                , IntegerSpinner.onChanged = Just (replaceElemOnChanged . CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx)
-                }
-            , label "User:"
-            , spin $ component IntegerSpinner.integerSpinner
-                { IntegerSpinner.value = usr
-                , IntegerSpinner.onChanged =  Just (replaceElemOnChanged . CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch))
-                }
-            ]
-            where
-              label t = BoxChild
-                { properties = defaultBoxChildProperties
-                , child = widget Label [#label := t]
-                }
-              spin child = BoxChild
-                { properties = defaultBoxChildProperties { expand = True, fill = True }
-                , child
-                }
-
-        tupleInput :: [EditableElem] -> Widget Event
-        tupleInput t =
-          tupleEntry' t (replaceElemOnChanged . Tuple)
-
-        replaceElemOnChanged :: EditableElem -> Event
-        replaceElemOnChanged = 
-          onChanged . replaceElem
-        
-        replaceElem :: EditableElem -> [EditableElem]
-        replaceElem newElem =
-          setAt i newElem elems
-
-    addElemButton :: BoxChild Event
     addElemButton =
-      BoxChild defaultBoxChildProperties $
-        widget Button
-          [ #label := "Add Element"
-          , #halign := AlignStart
-          , on #clicked (onChanged (elems `snoc` SingleLineText ""))
-          ]
+        button "Add Element" (elmsChange (elems `snoc` SingleLineText ""))
+
+data EditAs = EditAsRaw | EditAsTuple
+  deriving (Eq, Enum)
+
+instance Show EditAs where
+  show EditAsRaw = "Raw"
+  show EditAsTuple = "Tuple"
+
+getEditAs :: EditableBytes -> EditAs
+getEditAs (Left _) = EditAsRaw
+getEditAs (Right _) = EditAsTuple
+
+setEditAs :: EditableBytes -> EditAs -> EditableBytes
+setEditAs eb ea = case (eb, ea) of
+    (Left t,  EditAsRaw)   -> Left t
+    (Left t,  EditAsTuple) | Right tp <- LT.decodeTupleElems (textToBytes t) -> Right (toEditableElem <$> tp)
+    (Left _,  EditAsTuple) -> Right []
+    (Right t, EditAsTuple) -> Right t
+    (Right t, EditAsRaw)   -> Left . bytesToText . LT.encodeTupleElems $ fromEditableElem <$> t
+
+data ElemType
+  = None'
+  | Tuple'
+  | Bytes'
+  | SingleLineText'
+  | MultiLineText'
+  | Int'
+  | Float'
+  | Double'
+  | Bool'
+  | UUID'
+  | VersionStamp'
+  deriving (Eq, Enum)
+
+instance Show ElemType where
+    show None' = "None"
+    show Tuple' = "Tuple"
+    show Bytes' = "Bytes"
+    show SingleLineText' = "Text"
+    show MultiLineText' = "Text (long)"
+    show Float' = "Float"
+    show Double' = "Double"
+    show Int' = "Integer"
+    show Bool' = "Boolean"
+    show UUID' = "UUID"
+    show VersionStamp' = "Versionstamp"
+
+getElemType :: EditableElem -> ElemType
+getElemType = \case
+  None -> None'
+  Tuple _ -> Tuple'
+  Bytes _ -> Bytes'
+  SingleLineText _-> SingleLineText'
+  MultiLineText _ -> MultiLineText'
+  Int _ -> Int'
+  Float _ -> Float'
+  Double _ -> Double'
+  Bool _ -> Bool'
+  UUID {} -> UUID'
+  CompleteVS _ -> VersionStamp'
+  IncompleteVS _ -> VersionStamp'
+
+setElemType :: EditableElem -> ElemType -> EditableElem
+setElemType elm = \case
+  None' ->
+    None
+  Tuple' ->
+    case elm of
+      Tuple t -> Tuple t
+      _ -> Tuple []
+  Bytes' ->
+      case elm of
+          Bytes b -> Bytes b
+          _       -> Bytes ""
+  SingleLineText' | Just t <- elemText elm ->
+    SingleLineText t
+  SingleLineText' ->
+    SingleLineText ""
+  MultiLineText' | Just t <- elemText elm ->
+    MultiLineText t
+  MultiLineText' ->
+    MultiLineText ""
+  Int' ->
+    case elm of
+      Int i -> Int i
+      Float f -> Int (truncate f)
+      Double d -> Int (truncate d)
+      _     -> Int 0
+  Float' ->
+    case elm of
+      Float f -> Float f
+      Double d -> Float (double2Float d)
+      Int i -> Float (fromIntegral i)
+      _ -> Float 0
+  Double' ->
+    case elm of
+      Float f -> Double (float2Double f)
+      Double d -> Double d
+      Int i -> Double (fromIntegral i)
+      _ -> Double 0
+  Bool' ->
+    case elm of
+      Bool b -> Bool b
+      _      -> Bool False
+  UUID' ->
+    case elm of
+      UUID a b c d -> UUID a b c d
+      _ -> UUID 0 0 0 0
+  VersionStamp' ->
+    case elm of
+      CompleteVS vs -> CompleteVS vs
+      _ -> CompleteVS minBound
 
 escapeSyntaxHelp :: Text
 escapeSyntaxHelp =
   "Text will be UTF-8 encoded except for byte values specified in hex, like \
    \'\\xA0'. Use double slash '\\\\' to enter a single slash."
+
+    -- -- | This is a lens that appears to the outside like it gets/sets EditAs values, but
+    -- -- actually internally it switches an EditableBytes between text and tuple form.
+    -- newLens :: ALens' s EditAs
+    -- newLens = lens
+    --     (\s -> getEditAs (s ^# ebLens))
+    --     (\s b -> storing ebLens (setEditAs (s ^# ebLens) b) s)

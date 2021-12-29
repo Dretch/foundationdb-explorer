@@ -1,126 +1,102 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedLabels  #-}
-{-# LANGUAGE OverloadedLists   #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE LambdaCase #-}
 
 module FDBE.App
-  ( App(..)
-  ) where
+  ( start,
+  )
+where
 
-import           FDBE.Prelude
+import FDBE.Prelude
 
-import           Control.Monad.State.Class                   (modify)
-import           Data.HashSet                                (HashSet)
-import qualified Data.HashSet                                as HashSet
-import qualified Data.Vector                                 as Vector
-import           FoundationDB                                (Database)
-import           GI.Gtk                                      (Align (..),
-                                                              Box (..),
-                                                              Label (..),
-                                                              MenuBar (..),
-                                                              MenuItem (..),
-                                                              Orientation (..),
-                                                              Window (..),
-                                                              WindowPosition (..))
-import           GI.Gtk.Declarative
-import           GI.Gtk.Declarative.Component
-import           GI.Gtk.Declarative.Attributes.Custom.Window (window)
-import           System.Random                               (randomIO)
+import Control.Lens
+import Monomer
+import FoundationDB (Database)
+import FDBE.Component.Search (search)
+import FDBE.Component.Status (status)
 
-import           FDBE.Component.KeyWindow
-import           FDBE.Component.Search
-import           FDBE.Component.StatusWindow
-
-data App event = App
-  { database :: Database
-  , exitEvent :: event
+data AppModel = AppModel
+  { _database :: Database
+  , _visibleSection :: AppSection
   }
+  deriving (Show)
 
-instance Component App where
+-- todo: something less awkward / error prone (write an issue?)
+instance Eq AppModel where
+  a == b =
+    _visibleSection a == _visibleSection b
 
-  data ComponentState App = AppState
-    { statusVisible :: Bool
-    , keyWindows :: HashSet KeyWindowId
-    }
+data AppSection
+  = SplashSection
+  | StatusSection
+  | SearchSection
+  deriving (Eq, Show)
 
-  data ComponentAction App
-    = Close
-    | ShowStatus
-    | HideStatus
-    | NewKeyWindow KeyWindowId
-    | CloseKeyWindow KeyWindowId
+-- todo: why do these have to be together? https://stackoverflow.com/questions/47742054/haskell-makelenses-data-constructor-not-in-scope
+makeLenses ''AppModel
 
-  createComponent App{} =
-    ( AppState
-        { statusVisible = False
-        , keyWindows = mempty
-        }
-    , Nothing
-    )
-  
-  update App{..} = \case
-    Close ->
-      updateParent exitEvent
-    ShowStatus ->
-      modify (\s -> s{ statusVisible = True })
-    HideStatus ->
-      modify (\s -> s{ statusVisible = False })
-    NewKeyWindow id->
-      modify (\state -> state { keyWindows = HashSet.insert id (keyWindows state) })
-    CloseKeyWindow id ->
-      modify (\state -> state { keyWindows = HashSet.delete id (keyWindows state) })
-  
-  view App{..} AppState{..} =
-    bin
-      Window
-      ([ #title := "FoundationDB Explorer"
-      , on #deleteEvent $ const (True, Close)
-      , #widthRequest := 800
-      , #heightRequest := 800
-      , #windowPosition := WindowPositionCenter
-      ] <> statusWindowAttr <> keyWindowAttrs) $
-    container
-      Box
-      [#orientation := OrientationVertical]
-      [ 
-        container MenuBar []
-          [ subMenu
-              "Foundation DB"
-              [ menuItem MenuItem [on #activate ShowStatus]
-                  $ widget Label [#label := "Database Status", #halign := AlignStart]
-              , menuItem MenuItem [onM #activate (const (NewKeyWindow <$> randomIO))]
-                  $ widget Label [#label := "Edit Value at Key", #halign := AlignStart]
-              ]
-          ]
-      , BoxChild
-          { properties = defaultBoxChildProperties { fill = True, expand = True }
-          , child = component (Search database)
-          }
+data AppEvent
+  = OpenSection AppSection
+
+buildUI ::
+  WidgetEnv AppModel AppEvent ->
+  AppModel ->
+  WidgetNode AppModel AppEvent
+buildUI _wenv model = tree where
+
+  tree = case model ^. visibleSection of
+    StatusSection ->
+      status (model ^. database)
+    SplashSection ->
+      hstack [
+        filler,
+        vstack [
+          filler,
+          label "FoundationDB Explorer" `styleBasic` [textSize 40, textCenter, padding 15],
+          label "What would you like to do?" `styleBasic` [textCenter, padding 15],
+          spacer,
+          bigButton "View Database Status" StatusSection,
+          spacer,
+          bigButton "Fetch Keys and Values" SearchSection,
+          spacer,
+          bigButton "Write or Update a Value" SplashSection,
+          spacer,
+          image_ "./assets/icon.png" [alignCenter] `styleBasic` [padding 20, maxHeight 100, maxWidth 100],
+          filler
+        ],
+        filler
       ]
-    where
-      statusWindowAttr
-        | statusVisible = [statusWindow database]
-        | otherwise     = []
-      keyWindowAttrs = Vector.fromList $
-        HashSet.toList keyWindows <&> keyWindow database
+    SearchSection ->
+      search (model ^. database)
+  
+  bigButton msg stn =
+    button msg (OpenSection stn) `styleBasic` [border 4 lightGray, radius 10, textSize 20]
 
-statusWindow :: Database -> Attribute w (ComponentAction App)
-statusWindow db = window () $ bin Window
-  [ #title := "Database Status"
-  , on #deleteEvent (const (True, HideStatus))
-  , #windowPosition := WindowPositionCenter
-  ] $
-  component (StatusWindow db)
+handleEvent ::
+  WidgetEnv AppModel AppEvent ->
+  WidgetNode AppModel AppEvent ->
+  AppModel ->
+  AppEvent ->
+  [AppEventResponse AppModel AppEvent]
+handleEvent _wenv _node model = \case
+  OpenSection s ->
+    [Model (model & visibleSection .~ s)]
 
-keyWindow :: Database -> KeyWindowId -> Attribute w (ComponentAction App)
-keyWindow db id = window id $ bin Window
-  [ #title := "Edit Value at Key"
-  , on #deleteEvent (const (True, CloseKeyWindow id))
-  , #widthRequest := 900
-  , #heightRequest := 500
-  , #windowPosition := WindowPositionCenter
-  , classes ["keyWindow"]
-  ] $
-  component (KeyWindow db)
+theme :: Theme
+theme = darkTheme
+
+start :: Database -> IO ()
+start db = startApp model handleEvent buildUI config
+  where
+    config =
+      [ appWindowTitle "FoundationDB Explorer"
+      , appFontDef "Regular" "./assets/fonts/Roboto/Roboto-Regular.ttf"
+      , appFontDef "Mono" "./assets/fonts/RobotoMono/RobotoMono-Regular.ttf"
+      , appTheme theme
+      ]
+    model = AppModel
+      { _database = db
+      , _visibleSection = SplashSection
+      }

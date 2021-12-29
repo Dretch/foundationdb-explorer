@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module FDBE.Bytes
   ( textToBytes
   , bytesToText

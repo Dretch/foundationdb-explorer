@@ -16,7 +16,7 @@ data Operation a
   | OperationInProgress
   | OperationSuccess a
   | OperationFailure Text
-  deriving (Eq, Show)
+  deriving (Eq)
 
 operationSuccess :: Operation a -> Maybe a
 operationSuccess = \case
