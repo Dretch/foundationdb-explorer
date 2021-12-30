@@ -20,7 +20,8 @@ import Control.Exception (displayException)
 import qualified Data.Sequence as S
 import qualified Data.Foldable as Foldable
 import FDBE.Bytes (bytesToText)
-import FDBE.Component.JGrid (jcol, jgrid, jrow, cellMarginX, cellMargin, jgrid_)
+import FDBE.Component.JGrid (JGridRow, jcol, jrow, cellMargin, jgrid_)
+import qualified FDBE.Font as Font
 
 data SearchModel = SearchModel
   { _database :: Database
@@ -51,37 +52,40 @@ buildUI ::
   WidgetNode SearchModel SearchEvent
 buildUI _wenv model = widgetTree where
 
-  widgetTree = vstack
-    [ jgrid_ [cellMargin 4] [
-        jrow [
-          jcol $ label "From",
-          jcol $ tupleEntry (model ^. searchRange . searchFrom) (SetValue $ searchRange . searchFrom)
-        ],
-        jrow [
-          jcol $ label "To",
-          jcol $ tupleEntry (model ^. searchRange . searchTo) (SetValue $ searchRange . searchTo)
-        ],
-        jrow [
-          jcol $ label "Limit",
-          jcol $ numericField_ (searchRange . searchLimit) [minValue 0, wheelRate 10] -- todo: why is minValue ignored?
-        ],
-        jrow [
-          jcol spacer,
-          jcol $ labeledCheckbox_ "Reverse Order" (searchRange . searchReverse) [textRight]
-        ],
-        jrow [
-          jcol spacer,
-          jcol $ hstack [
-            filler,
-            button "Fetch" StartSearch
-          ]
+  widgetTree =
+    jgrid_ [cellMargin 4] [
+      jrow [
+        jcol $ label "From",
+        jcol $ tupleEntry (model ^. searchRange . searchFrom) (SetValue $ searchRange . searchFrom)
+      ],
+      jrow [
+        jcol $ label "To",
+        jcol $ tupleEntry (model ^. searchRange . searchTo) (SetValue $ searchRange . searchTo)
+      ],
+      jrow [
+        jcol $ label "Limit",
+        jcol $ numericField_ (searchRange . searchLimit) [minValue 0, wheelRate 10] -- todo: why is minValue ignored?
+      ],
+      jrow [
+        jcol spacer,
+        jcol $ labeledCheckbox_ "Reverse Order" (searchRange . searchReverse) [textRight]
+      ],
+      jrow [
+        jcol spacer,
+        jcol $ hstack [
+          filler,
+          button "Fetch" StartSearch
         ]
-      ] `styleBasic` [padding 4]  `nodeEnabled` searchNotInProgress,
-      filler,
-      results,
-      filler,
-      label statusText
-    ] `styleBasic` [padding 4] `nodeEnabled` searchNotInProgress
+      ],
+      jrow [
+        jcol spacer,
+        jcol results
+      ],
+      jrow [
+        jcol spacer,
+        jcol $ label statusText
+      ]
+    ] `styleBasic` [padding 4]  `nodeEnabled` searchNotInProgress
 
   results = case model ^. searchResults of
     OperationNotStarted ->
@@ -92,7 +96,7 @@ buildUI _wenv model = widgetTree where
       label msg `styleBasic` [textCenter]
     OperationSuccess SearchResults { _searchSeq } ->
       scroll $
-        vgrid (Foldable.toList (resultRow <$> _searchSeq))
+        jgrid_ [cellMargin 4] (Foldable.toList (resultRow <$> _searchSeq))
 
   statusText = case model ^. searchResults of
     OperationSuccess SearchResults { _searchDuration, _searchSeq } ->
@@ -105,12 +109,12 @@ buildUI _wenv model = widgetTree where
   searchNotInProgress =
     model ^. searchResults /= OperationInProgress
 
-resultRow :: SearchResult -> WidgetNode SearchModel SearchEvent
+resultRow :: SearchResult -> JGridRow SearchModel SearchEvent
 resultRow SearchResult { _resultKey, _resultValue } =
-  hgrid [
-    label (bytesToText (_resultKey ^. _1)),
-    label "=", -- todo: make bold
-    label (bytesToText (_resultValue ^. _1))
+  jrow [
+    jcol $ label (bytesToText (_resultKey ^. _1)),
+    jcol $ label "=" `styleBasic` [textFont Font.monoBold], -- todo: why does this sometimes not show up?
+    jcol $ label (bytesToText (_resultValue ^. _1))
   ]
 
 handleEvent ::

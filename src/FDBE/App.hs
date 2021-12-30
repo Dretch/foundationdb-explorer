@@ -16,6 +16,7 @@ import Monomer
 import FoundationDB (Database)
 import FDBE.Component.Search (search)
 import FDBE.Component.Status (status)
+import qualified FDBE.Font as Font
 
 data AppModel = AppModel
   { _database :: Database
@@ -92,10 +93,8 @@ start db = startApp model handleEvent buildUI config
   where
     config =
       [ appWindowTitle "FoundationDB Explorer"
-      , appFontDef "Regular" "./assets/fonts/Roboto/Roboto-Regular.ttf"
-      , appFontDef "Mono" "./assets/fonts/RobotoMono/RobotoMono-Regular.ttf"
       , appTheme theme
-      ]
+      ] <> Font.fontDefs
     model = AppModel
       { _database = db
       , _visibleSection = SplashSection
