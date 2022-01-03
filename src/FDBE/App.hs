@@ -17,6 +17,7 @@ import FoundationDB (Database)
 import FDBE.Component.Search (search)
 import FDBE.Component.Status (status)
 import qualified FDBE.Font as Font
+import FDBE.Monomer (compactTheme)
 
 data AppModel = AppModel
   { _database :: Database
@@ -56,7 +57,7 @@ buildUI _wenv model = tree where
         vstack [
           filler,
           label "FoundationDB Explorer" `styleBasic` [textSize 40, textCenter, padding 15],
-          label "What would you like to do?" `styleBasic` [textCenter, padding 15],
+          label "What would you like to do?" `styleBasic` [textSize 16, textCenter, padding 15],
           spacer,
           bigButton "View Database Status" StatusSection,
           spacer,
@@ -86,7 +87,7 @@ handleEvent _wenv _node model = \case
     [Model (model & visibleSection .~ s)]
 
 theme :: Theme
-theme = darkTheme
+theme = compactTheme darkTheme
 
 start :: Database -> IO ()
 start db = startApp model handleEvent buildUI config

@@ -1,17 +1,16 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{- Jolly-good Grid -}
 
+{- Jolly-good Grid -}
 module FDBE.Component.JGrid (
   JGridCfg,
   JGridRow,
   JGridCol,
   JGridColCfg,
-  cellMarginX,
-  cellMarginY,
-  cellMargin,
+  childSpacingX,
+  childSpacingY,
+  childSpacing,
   colSpan,
-  rowSpan,
   jgrid,
   jgrid_,
   jrow,
@@ -19,48 +18,49 @@ module FDBE.Component.JGrid (
   jcol_
 ) where
 
-import FDBE.Prelude
+import FDBE.Prelude hiding (or, span)
 
 import Control.Lens ((&), (.~))
 import Monomer
 import qualified Monomer.Lens as L
 import Monomer.Widgets.Container
-import Data.Foldable (toList, foldl')
+import Data.Foldable (foldl')
 import Data.List.Index (imap)
 import qualified Data.Sequence as S
 import Control.Applicative ((<|>))
 import Data.Sequence ((|>))
+import Safe (maximumMay)
 
 data JGridCfg = JGridCfg
-  { jgcCellMarginX :: Maybe Double
-  , jgcCellMarginY :: Maybe Double
+  { jgcChildSpacingX :: Maybe Double
+  , jgcChildSpacingY :: Maybe Double
   } deriving (Eq, Show)
 
 instance Default JGridCfg where
   def = JGridCfg
-    { jgcCellMarginX = Nothing
-    , jgcCellMarginY = Nothing
+    { jgcChildSpacingX = Nothing
+    , jgcChildSpacingY = Nothing
     }
 
 instance Semigroup JGridCfg where
   c1 <> c2 = JGridCfg
-    { jgcCellMarginX = jgcCellMarginX c2 <|> jgcCellMarginX c1
-    , jgcCellMarginY = jgcCellMarginY c2 <|> jgcCellMarginY c1
+    { jgcChildSpacingX = jgcChildSpacingX c2 <|> jgcChildSpacingX c1
+    , jgcChildSpacingY = jgcChildSpacingY c2 <|> jgcChildSpacingY c1
     }
 
 instance Monoid JGridCfg where
   mempty = def
 
--- todo: make class?
-cellMarginX :: Double -> JGridCfg
-cellMarginX x = def { jgcCellMarginX = Just x }
+-- todo: make class? (could be useful on other containers too?)
+childSpacingX :: Double -> JGridCfg
+childSpacingX x = def { jgcChildSpacingX = Just x }
 
 -- todo: make class?
-cellMarginY :: Double -> JGridCfg
-cellMarginY y = def { jgcCellMarginY = Just y }
+childSpacingY :: Double -> JGridCfg
+childSpacingY y = def { jgcChildSpacingY = Just y }
 
-cellMargin :: Double -> JGridCfg
-cellMargin xy = def { jgcCellMarginX = Just xy, jgcCellMarginY = Just xy }
+childSpacing :: Double -> JGridCfg
+childSpacing xy = def { jgcChildSpacingX = Just xy, jgcChildSpacingY = Just xy }
 
 newtype JGridRow s e = JGridRow
   { jgrCols :: [JGridCol s e]
@@ -71,21 +71,18 @@ data JGridCol s e = JGridCol
   , jgrColCfg :: JGridColCfg
   }
 
-data JGridColCfg = JGridColCfg
+newtype JGridColCfg = JGridColCfg
   { jgcColSpan :: Maybe Word
-  , jgcRowSpan :: Maybe Word
   }
 
 instance Default JGridColCfg where
   def = JGridColCfg
     { jgcColSpan = Nothing
-    , jgcRowSpan = Nothing
     }
 
 instance Semigroup JGridColCfg where
   c1 <> c2 = JGridColCfg
     { jgcColSpan = jgcColSpan c2 <|> jgcColSpan c1
-    , jgcRowSpan = jgcColSpan c2 <|> jgcColSpan c1
     }
 
 instance Monoid JGridColCfg where
@@ -95,17 +92,12 @@ instance Monoid JGridColCfg where
 colSpan :: Word -> JGridColCfg
 colSpan x = def { jgcColSpan = Just x }
 
--- todo: make class?
-rowSpan :: Word -> JGridColCfg
-rowSpan x = def { jgcRowSpan = Just x }
+newtype JGridModel = JGridModel (Seq JGridModelWidget) -- use Seq to match Monomer APIs
 
-newtype JGridModel = JGridModel [JGridModelWidget] -- todo: use Seq?
-
-data JGridModelWidget = JGridModelWidget -- todo: use Word?
+data JGridModelWidget = JGridModelWidget
   { jgmCol :: Int
   , jgmRow :: Int
   , jgmColSpan :: Int
-  , jgmRowSpan :: Int
   } deriving (Eq, Show)
 
 jrow :: [JGridCol s e] -> JGridRow s e
@@ -115,7 +107,10 @@ jcol :: WidgetNode s e -> JGridCol s e
 jcol = jcol_ []
 
 jcol_ :: [JGridColCfg] -> WidgetNode s e  -> JGridCol s e
-jcol_ configs widget = JGridCol widget (mconcat configs)
+jcol_ configs widget = JGridCol
+  { jgrContents = widget
+  , jgrColCfg = mconcat configs
+  }
 
 jgrid :: forall s e. [JGridRow s e] -> WidgetNode s e
 jgrid = jgrid_ def
@@ -127,50 +122,46 @@ jgrid_ configs rows =
   defaultWidgetNode "FDBE.JGrid" container
     & L.children .~ S.fromList (jgrContents <$> mconcat (jgrCols <$> rows))
   where
-    config = mconcat configs
-    marginX = fromMaybe 0 (jgcCellMarginX config)
-    marginY = fromMaybe 0 (jgcCellMarginY config)
-
     container = createContainer model def {
       containerGetSizeReq = getSizeReq,
       containerResize = resize
     }
 
+    config = mconcat configs
     model = rowsToModel rows
-    JGridModel modelList = model
+    JGridModel modelSeq = model
     nRows = length rows
-    nCols = maximum (length . jgrCols <$> rows) -- todo: empty rows?
+    nCols = fromMaybe 0 $ maximumMay (length . jgrCols <$> rows)
+
+    spacingX = fromMaybe 0 (jgcChildSpacingX config)
+    spacingY = fromMaybe 0 (jgcChildSpacingY config)
+
+    spacingTotalX = spacingX * max 0 (fromIntegral nCols - 1)
+    spacingTotalY = spacingY * max 0 (fromIntegral nRows - 1)
 
     -- todo: use flex/extra/factor?
     getSizeReq _wenv _node children = (w, h) where
-      (wReqs, hReqs) = toReqSizes model (toList children)
-      w = SizeReq (sum (_szrFixed <$> wReqs) + marginXTotal) 0 0 1
-      h = SizeReq (sum (_szrFixed <$> hReqs) + marginYTotal) 0 0 1
-      marginXTotal = max 0 (fromIntegral (nCols - 1)) * marginX
-      marginYTotal = max 0 (fromIntegral (nRows - 1)) * marginY
+      (wReqs, hReqs) = toSizeReqs model children
+      w = SizeReq (sum (_szrFixed <$> wReqs) + spacingTotalX) 0 0 1
+      h = SizeReq (sum (_szrFixed <$> hReqs) + spacingTotalY) 0 0 1
 
     resize wenv node viewport children = (resultNode node, assignedAreas) where
       style = currentStyle wenv node
       Rect l t w h = fromMaybe def (removeOuterBounds style viewport)
 
       assignedAreas =
-        flip fmap (S.zip children (S.fromList modelList)) $ \(_child, childModel) ->
-          let JGridModelWidget{jgmCol, jgmRow, jgmColSpan, jgmRowSpan} = childModel
-              chX = l + S.index colXs jgmCol + marginX * fromIntegral jgmCol
-              chY = t + S.index colYs jgmRow + marginY * fromIntegral jgmRow
+        flip fmap modelSeq $ \childModel ->
+          let JGridModelWidget{jgmCol, jgmRow, jgmColSpan} = childModel
+              chX = l + S.index colXs jgmCol + spacingX * fromIntegral jgmCol
+              chY = t + S.index colYs jgmRow + spacingY * fromIntegral jgmRow
               chW = S.index colXs (jgmCol + jgmColSpan) - S.index colXs jgmCol
-              chH = S.index colYs (jgmRow + jgmRowSpan) - S.index colYs jgmRow
+              chH = S.index colYs (jgmRow + 1) - S.index colYs jgmRow
           in Rect chX chY chW chH
 
-      (wReqs', hReqs') = toReqSizes model (toList children)
-      wReqs = trace ("wReqs=" <> show wReqs') wReqs'
-      hReqs = trace ("hReqs=" <> show hReqs') hReqs'
+      (wReqs, hReqs) = toSizeReqs model children
 
-      availableW = w - marginX * (fromIntegral nCols - 1) -- todo: empty cols?
-      colXs = sizesToPositions (cellSize wReqs availableW)
-
-      availableH = h - marginY * (fromIntegral nRows - 1)
-      colYs = sizesToPositions (cellSize hReqs availableH)
+      colXs = sizesToPositions (cellSize wReqs (w - spacingTotalX))
+      colYs = sizesToPositions (cellSize hReqs (h - spacingTotalY))
 
 cellSize :: Seq SizeReq -> Double -> Seq Double
 cellSize reqs available = reqResult <$> reqs where
@@ -200,38 +191,68 @@ sizesToPositions :: Seq Double -> Seq Double
 sizesToPositions = S.scanl (+) 0
 
 rowsToModel :: [JGridRow s e] -> JGridModel
-rowsToModel rows = JGridModel (mconcat (imap mapRow rows)) where
+rowsToModel rows = JGridModel (S.fromList $ mconcat (imap mapRow rows)) where
   mapRow y (JGridRow row) =
     snd $ foldl' (foldCol y) (0, mempty) row
   foldCol y (w, cols) (JGridCol _wgt cfg) =
     let cSpan = fromIntegral $ fromMaybe 1 (jgcColSpan cfg)
-     in (w + cSpan, cols `snoc` JGridModelWidget w y cSpan 1) -- todo: support rowspan!
+     in (w + cSpan, cols `snoc` JGridModelWidget w y cSpan)
 
--- todo: make less ugly / more efficient
-toReqSizes
+toSizeReqs
  :: JGridModel
- -> [WidgetNode s e]
+ -> Seq (WidgetNode s e)
  -> (Seq SizeReq, Seq SizeReq) -- ^ The requested sizes for each column and each row
-toReqSizes (JGridModel modelWidgets) widgets =
-  foldl'
-    (\(cols, rows) (x, y, w, h) ->
-      (mergeAt cols x w, mergeAt rows y h))
-    (mempty, mempty)
-    xySizes
+toSizeReqs (JGridModel modelWidgets) widgets =
+  (toSizeReqs' (sortOnSpan widgetWidths), toSizeReqs' widgetHeights)
   where
-    xySizes :: [(Int, Int, SizeReq, SizeReq)]
-    xySizes = mconcat $ flip fmap (zip modelWidgets widgets) $ \(JGridModelWidget{jgmCol, jgmRow, jgmColSpan, jgmRowSpan}, widget) ->
-      let w = multSizeReq (_wniSizeReqW . _wnInfo $ widget) (1 / fromIntegral jgmColSpan)
-          h = multSizeReq (_wniSizeReqH . _wnInfo $ widget) (1 / fromIntegral jgmRowSpan)
-      in [(x, y, w, h) | x <- [jgmCol..jgmCol + jgmColSpan - 1]
-                       , y <- [jgmRow..jgmRow + jgmRowSpan - 1]]
+    widgetWidths =
+      S.zipWith (\w m -> (_wniSizeReqW . _wnInfo $ w, jgmCol m, jgmColSpan m)) widgets modelWidgets
 
-    mergeAt :: Seq SizeReq -> Int -> SizeReq -> Seq SizeReq
-    mergeAt reqs i req
-      | S.length reqs == i = reqs |> req
-      | S.length reqs > i  = S.adjust' (sizeReqMergeMax req) i reqs
-      | otherwise          = error "There is a bug in the JGrid code: this should not happen!"
+    widgetHeights =
+      S.zipWith (\w m -> (_wniSizeReqH . _wnInfo $ w, jgmRow m, 1)) widgets modelWidgets
 
+    sortOnSpan =
+      S.sortOn (\(_, _, span) -> span)
+
+-- todo: make less hacky/more efficient
+toSizeReqs'
+ :: Seq (SizeReq, Int, Int) -- ^ The requested size of each widget, along with its (col/row) position and (col/row) span, sorted by span asc
+ -> Seq SizeReq             -- ^ The computed size requests for each col/row
+toSizeReqs' = foldl' mergeWidget mempty where
+
+  mergeWidget :: Seq SizeReq -> (SizeReq, Int, Int) -> Seq SizeReq
+  mergeWidget reqs (req, start, span) =
+    case (occupiedReqs, unoccuppiedReqs) of
+      ([], []) ->
+        error $ "This is a bug! Maybe span is 0: " <> show span
+      ([], ur) ->
+        -- all spaces are unoccupied: split the widget equally across all spaces
+        let splitReq = multSizeReq req (1 / fromIntegral span)
+          in foldl'
+              (\reqs' ur' -> mergeAt reqs' ur' splitReq)
+              reqs
+              ur
+      (or, []) ->
+        -- all spaces are occupied: distrbute the fixed+flex+extra size from the left,
+        -- and dump any remaining in the right-most space (mostly ignore factor for now)
+        let cutReq = foldl'
+              (\req' (_p, or') -> req' `minusSizeReq` or')
+              req
+              or
+          in S.adjust (sizeReqMergeSum cutReq) (fst (last or)) reqs
+      (_or, _ur) ->
+        error "Todo: implement this branch! (it has not been needed yet...)"
+    -- fill up occupiedReqs, then the unoccupied ones with anything left over...
+    where
+    
+    occupiedReqs :: [(Int, SizeReq)]
+    occupiedReqs =
+      [(p, r) | p <- [start..start + span - 1], Just r <- [S.lookup p reqs]]
+
+    unoccuppiedReqs :: [Int]
+    unoccuppiedReqs =
+      [p | p <- [start..start + span - 1], Nothing <- [S.lookup p reqs]]
+ 
 multSizeReq :: SizeReq -> Double -> SizeReq
 multSizeReq (SizeReq fixed flex extra factor) m = SizeReq {
     _szrFixed = m * fixed,
@@ -239,3 +260,18 @@ multSizeReq (SizeReq fixed flex extra factor) m = SizeReq {
     _szrExtra = m * extra,
     _szrFactor = factor
   }
+
+minusSizeReq :: SizeReq -> SizeReq -> SizeReq
+minusSizeReq r1 r2 =
+  SizeReq
+    { _szrFixed = max 0 (_szrFixed r1 - _szrFixed r2)
+    , _szrFlex = max 0 (_szrFlex r1 - _szrFlex r2)
+    , _szrExtra = max 0 (_szrExtra r1 - _szrExtra r2)
+    , _szrFactor = _szrFactor r1
+    }
+
+mergeAt :: Seq SizeReq -> Int -> SizeReq -> Seq SizeReq
+mergeAt reqs i req
+  | S.length reqs == i = reqs |> req
+  | S.length reqs > i  = S.adjust' (sizeReqMergeMax req) i reqs
+  | otherwise          = error "There is a bug in the JGrid code: this should not happen!"

@@ -18,6 +18,7 @@ import GHC.Float (double2Float, float2Double)
 import qualified FoundationDB.Layer.Tuple as LT
 import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp), VersionstampCompleteness (Complete))
+import FDBE.Monomer (intersperseSpacers)
 
 tupleEntry
  :: forall s e. (WidgetModel s, WidgetEvent e)
@@ -25,9 +26,9 @@ tupleEntry
  -> (EditableBytes -> e)
  -> WidgetNode s e
 tupleEntry s ebChange = tree where
-    tree = hstack [
-        textDropdownSV (getEditAs s) (ebChange . setEditAs s) [EditAsRaw, EditAsTuple],
-        spacer,
+    tree = hstack $ intersperseSpacers [
+        textDropdownSV (getEditAs s) (ebChange . setEditAs s) [EditAsRaw, EditAsTuple]
+          `styleBasic` [sizeReqW (fixedSize 80)],
         editor
       ]
 
@@ -44,21 +45,20 @@ tupleEntry'
  -> WidgetNode s e
 tupleEntry' elems elmsChange =
     vstack $
-      imap elemEntry elems <> [addElemButton]
+      intersperseSpacers $ imap elemEntry elems <> [addElemButton]
   where
 
     elemEntry :: Int -> EditableElem -> WidgetNode s e
     elemEntry i elm = elemTree where
-      elemTree = hstack [
+      elemTree = hstack $ intersperseSpacers [
           elemTypeCombo,
-          spacer,
           elemInput,
-          spacer,
           removeElemButton
         ]
 
       elemTypeCombo =
         textDropdownSV (getElemType elm) (\et -> elmsChange (setAt i (setElemType elm et) elems)) (enumFrom None')
+          `styleBasic` [sizeReqW (fixedSize 120)]
 
       elemInput = case elm of
         None             -> noneInput
@@ -114,17 +114,12 @@ tupleEntry' elems elmsChange =
       
       completeVSInput :: Versionstamp 'Complete -> WidgetNode s e
       completeVSInput (CompleteVersionstamp (TransactionVersionstamp tx batch) usr) =
-        hstack [
+        hstack $ intersperseSpacers [
           label "Tx:",
-          spacer,
           numericFieldV_ tx (onElemChange . CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch) [wheelRate 10],
-          spacer,
           label "Batch:",
-          spacer,
           numericFieldV_ batch (onElemChange . CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx) [wheelRate 10],
-          spacer,
           label "User:",
-          spacer,
           numericFieldV_ usr (onElemChange . CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch)) [wheelRate 10]
         ]
       
@@ -132,13 +127,13 @@ tupleEntry' elems elmsChange =
         tupleEntry' t (onElemChange . Tuple)
       
       onElemChange newVal =
-          elmsChange (setAt i newVal elems)
+        elmsChange (setAt i newVal elems)
 
       removeElemButton =
-          button "Remove" (elmsChange (deleteAt i elems))
+        button "Remove" (elmsChange (deleteAt i elems))
 
     addElemButton =
-        button "Add Element" (elmsChange (elems `snoc` SingleLineText ""))
+      button "Add Element" (elmsChange (elems `snoc` SingleLineText ""))
 
 data EditAs = EditAsRaw | EditAsTuple
   deriving (Eq, Enum)

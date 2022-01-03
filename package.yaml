@@ -23,6 +23,7 @@ dependencies:
 - pipes
 - process
 - random
+- safe
 - split
 - text
 - text-show
