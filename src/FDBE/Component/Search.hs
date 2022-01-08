@@ -49,25 +49,21 @@ makeLenses ''SearchModel
 makeLenses ''SearchResults
 
 data SearchEvent
-  = forall a. SetValue (ALens' SearchModel a) a
-  | StartSearch
+  = StartSearch
   | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
 
-buildUI ::
-  WidgetEnv SearchModel SearchEvent ->
-  SearchModel ->
-  WidgetNode SearchModel SearchEvent
+buildUI :: UIBuilder SearchModel SearchEvent
 buildUI _wenv model = widgetTree where
 
   widgetTree =
     jgrid_ [childSpacing 2] [
       jrow [
         jcol $ label "From",
-        jcol $ tupleEntry (model ^. searchRange . searchFrom) (SetValue $ searchRange . searchFrom)
+        jcol $ tupleEntry (searchRange . searchFrom)
       ],
       jrow [
         jcol $ label "To",
-        jcol $ tupleEntry (model ^. searchRange . searchTo) (SetValue $ searchRange . searchTo)
+        jcol $ tupleEntry (searchRange . searchTo)
       ],
       jrow [
         jcol $ label "Limit",
@@ -172,8 +168,6 @@ handleEvent ::
   SearchEvent ->
   [EventResponse SearchModel SearchEvent ep sp]
 handleEvent _wenv _node model = \case
-  SetValue setter a ->
-    [Model (storing setter a model)]
   StartSearch ->
     [ Model (storing searchResults OperationInProgress model)
     , Task $ do

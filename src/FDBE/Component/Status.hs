@@ -26,21 +26,13 @@ data StatusEvent
  = WaitThenLoadStatus Int
  | SetStatus Text
 
-buildUI ::
-  WidgetEnv StatusModel StatusEvent ->
-  StatusModel ->
-  WidgetNode StatusModel StatusEvent
+buildUI :: UIBuilder StatusModel StatusEvent
 buildUI _wenv model =
   scroll $
     label_ (model ^. statusText) [multiline]
      `styleBasic` [padding 4, textFont "Mono"]
 
-handleEvent ::
-  WidgetEnv StatusModel StatusEvent ->
-  WidgetNode StatusModel StatusEvent ->
-  StatusModel ->
-  StatusEvent ->
-  [EventResponse StatusModel StatusEvent ep sp]
+handleEvent :: EventHandler StatusModel StatusEvent sp ep
 handleEvent _wenv _node model = \case
   WaitThenLoadStatus seconds ->
    [Producer $ \handler -> do

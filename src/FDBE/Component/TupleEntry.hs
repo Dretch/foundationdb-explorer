@@ -11,7 +11,7 @@ module FDBE.Component.TupleEntry
 import FDBE.Prelude
 import FDBE.FoundationDB
 import FDBE.Bytes (textToBytes, bytesToText)
-
+import Control.Lens hiding (imap, snoc)
 import Data.List.Index (deleteAt, imap, setAt)
 import Monomer
 import GHC.Float (double2Float, float2Double)
@@ -20,23 +20,28 @@ import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp), VersionstampCompleteness (Complete))
 import FDBE.Monomer (intersperseSpacers)
 
-tupleEntry
- :: forall s e. (WidgetModel s, WidgetEvent e)
- => EditableBytes
- -> (EditableBytes -> e)
- -> WidgetNode s e
-tupleEntry s ebChange = tree where
-    tree = hstack $ intersperseSpacers [
-        textDropdownSV (getEditAs s) (ebChange . setEditAs s) [EditAsRaw, EditAsTuple]
-          `styleBasic` [sizeReqW (fixedSize 80)],
-        editor
-      ]
+data TupleEntryEvent = TupleValueChanged EditableBytes
 
-    editor = case s of
-      Left t ->
-        tooltip escapeSyntaxHelp (textFieldV t (ebChange . Left))
-      Right elems ->
-        tupleEntry' elems (ebChange . Right)
+tupleEntry
+ :: (CompositeEvent ep, CompParentModel sp)
+ => ALens' sp EditableBytes
+ -> WidgetNode sp ep
+tupleEntry ls =
+  composite "FBDE.TupleEntry" ls buildUI handleEvent
+
+buildUI :: UIBuilder EditableBytes TupleEntryEvent
+buildUI _wenv model = tree where
+  tree = hstack $ intersperseSpacers [
+      textDropdownSV (getEditAs model) (TupleValueChanged . setEditAs model) [EditAsRaw, EditAsTuple]
+        `styleBasic` [sizeReqW (fixedSize 80)],
+      editor
+    ]
+
+  editor = case model of
+    Left t ->
+      tooltip escapeSyntaxHelp (textFieldV t (TupleValueChanged . Left))
+    Right elems ->
+      tupleEntry' elems (TupleValueChanged . Right)
 
 tupleEntry'
  :: forall s e. (WidgetModel s, WidgetEvent e)
@@ -134,6 +139,10 @@ tupleEntry' elems elmsChange =
 
     addElemButton =
       button "Add Element" (elmsChange (elems `snoc` SingleLineText ""))
+
+handleEvent :: EventHandler EditableBytes TupleEntryEvent sp ep
+handleEvent _wenv _node _model (TupleValueChanged newValue) =
+  [Model newValue]
 
 data EditAs = EditAsRaw | EditAsTuple
   deriving (Eq, Enum)
