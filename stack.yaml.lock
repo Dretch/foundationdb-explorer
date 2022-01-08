@@ -12,6 +12,17 @@ packages:
   original:
     hackage: nanovg-0.8.0.0
 - completed:
+    name: monomer
+    version: 1.2.0.0
+    git: https://github.com/fjvallarino/monomer.git
+    pantry-tree:
+      size: 17177
+      sha256: ee01b1f99fb21f61a0472957e35bd9dfeb6ab6f043de67509e46e354b112de4a
+    commit: 8e3d676e1acf1555c876b19dba9497414d934579
+  original:
+    git: https://github.com/fjvallarino/monomer.git
+    commit: 8e3d676e1acf1555c876b19dba9497414d934579
+- completed:
     name: foundationdb-haskell
     version: 0.1.0.0
     git: https://github.com/crclark/foundationdb-haskell

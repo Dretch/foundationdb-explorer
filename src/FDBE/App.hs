@@ -17,7 +17,7 @@ import FoundationDB (Database)
 import FDBE.Component.Search (search)
 import FDBE.Component.Status (status)
 import qualified FDBE.Font as Font
-import FDBE.Monomer (compactTheme)
+import FDBE.Monomer (adwaitaTheme)
 
 data AppModel = AppModel
   { _database :: Database
@@ -86,15 +86,12 @@ handleEvent _wenv _node model = \case
   OpenSection s ->
     [Model (model & visibleSection .~ s)]
 
-theme :: Theme
-theme = compactTheme darkTheme
-
 start :: Database -> IO ()
 start db = startApp model handleEvent buildUI config
   where
     config =
       [ appWindowTitle "FoundationDB Explorer"
-      , appTheme theme
+      , appTheme adwaitaTheme
       ] <> Font.fontDefs
     model = AppModel
       { _database = db

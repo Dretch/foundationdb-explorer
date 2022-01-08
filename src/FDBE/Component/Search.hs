@@ -80,7 +80,7 @@ buildUI _wenv model = widgetTree where
       jrow [
         jcol_ [colSpan 2] $ hstack [
           filler,
-          button "Fetch" StartSearch
+          mainButton "Fetch" StartSearch
         ]
       ],
       jrow [
@@ -220,7 +220,7 @@ elemToWidget labelSS tooltipPrefix =
         -- todo: why text not showing up!?
         hstack $ flip imap es $ \i e ->
           elemToWidget labelSS (tooltipPrefix <> tupleHelp i) e
-            `styleBasic` [border 1 whiteSmoke, paddingH 6, paddingV 2]
+            `styleBasic` [border 1 rowTupleBorder, paddingH 6, paddingV 2]
   where
     w :: Text -> Text -> WidgetNode s e
     w text tooltipText =
@@ -250,10 +250,13 @@ maxTupleSize rows =
     _ S.:> a -> fromIntegral <$> a
 
 rowBgLight :: Color
-rowBgLight = rgbHex "#626262"
+rowBgLight = rgbHex "#fcfcfc"
 
 rowBgDark :: Color
-rowBgDark = rgbHex "#4d5154"
+rowBgDark = rgbHex "#f3f6f6"
+
+rowTupleBorder :: Color
+rowTupleBorder = rgbHex "#e5e5e5"
 
 rowBgHover :: Color
-rowBgHover = rgbHex "#1c1d1e"
+rowBgHover = rgbHex "#ffffff"
