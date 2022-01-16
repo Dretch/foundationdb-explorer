@@ -10,7 +10,7 @@ module FDBE.Component.Search (search) where
 
 import FDBE.Prelude
 import FDBE.Component.TupleEntry
-import FDBE.FoundationDB (SearchResult (..), SearchRange (..), searchFrom, searchTo, searchLimit, searchReverse, getSearchResult)
+import FDBE.FoundationDB (SearchResult (..), SearchRange (..), searchFrom, searchTo, searchLimit, searchReverse, getSearchResult, EditableElem, EditableBytes)
 
 import Control.Lens
 import qualified Data.Sequence                               as S
@@ -29,11 +29,15 @@ import FoundationDB.Layer.Tuple (Elem)
 import qualified FoundationDB.Layer.Tuple as LT
 import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp, IncompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp))
+import FDBE.Component.KeyEditor (KeyEditorModel, initialModel, keyEditor)
+import Data.Maybe (Maybe(Nothing))
+import Monomer.Core.Lens (HasFontSize(fontSize))
 
 data SearchModel = SearchModel
   { _database :: Database
   , _searchRange :: SearchRange
   , _searchResults :: Operation SearchResults
+  , _keyEditorModel :: Maybe KeyEditorModel
   }
   deriving (Eq, Show)
 
@@ -51,11 +55,19 @@ makeLenses ''SearchResults
 data SearchEvent
   = StartSearch
   | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
+  | ShowEditOverlay ByteString ByteString
+  | HideEditOverlay
+  | SetKeyEditorModel KeyEditorModel
 
 buildUI :: UIBuilder SearchModel SearchEvent
-buildUI _wenv model = widgetTree where
+buildUI _wenv model = widgetStack where
 
-  widgetTree =
+  widgetStack = zstack [
+      searchGrid,
+      maybe (spacer `nodeVisible` False) editOverlay (model ^. keyEditorModel)
+    ]
+
+  searchGrid =
     jgrid_ [childSpacing 2] [
       jrow [
         jcol $ label "From",
@@ -111,15 +123,24 @@ buildUI _wenv model = widgetTree where
        in T.pack $ "Fetched " <> nRows <> " keys in " <> dur
     _ ->
      ""
-  
+
   searchNotInProgress =
     model ^. searchResults /= OperationInProgress
+
+  editOverlay model =
+    alert HideEditOverlay (keyEditor model SetKeyEditorModel)
 
 resultRow :: Word -> Word -> Color -> SearchResult -> JGridRow SearchModel SearchEvent
 resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
   jrow $
-    keyCells <> [eqCell] <> valueCells
+    [editCell] <> keyCells <> [eqCell] <> valueCells
   where
+    editCell :: JGridCol s SearchEvent
+    editCell =
+      jcol $
+        button "Edit" (ShowEditOverlay (fst _resultKey) (fst _resultValue))
+          `styleBasic` [textSize 10, border 0 white]
+
     eqCell :: JGridCol s e
     eqCell =
       -- todo: why does this sometimes not show up?(when using reverse search...)
@@ -132,41 +153,34 @@ resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
         [rawCell keyWidth t]
       | (_, Just ts) <- _resultKey =
         imap (elemCell . tupleHelp) ts <> spacerCells (fromIntegral keyWidth - length ts)
-    
+
     valueCells :: [JGridCol s e]
     valueCells
       | (t, Nothing) <- _resultValue =
         [rawCell valueWidth t]
       | (_, Just ts) <- _resultValue =
         imap (elemCell . tupleHelp) ts
-    
+
     rawCell :: Word -> ByteString -> JGridCol s e
     rawCell width bytes =
       jcol_ [colSpan width] $
         labelSS $ label (bytesToText bytes) -- todo: tooltip?
-    
+
     elemCell :: Text -> Elem -> JGridCol s e
     elemCell tooltipPrefix elm =
       jcol $ elemToWidget labelSS tooltipPrefix elm
-    
+
     spacerCells :: Int -> [JGridCol s e]
     spacerCells n =
       L.replicate n (jcol spacer)
-    
+
     labelSS :: LabelStyleSetter
-    labelSS w = w
-      `styleBasic` [bgColor bgCol, padding 6]
-      `styleHover` [bgColor rowBgHover, cursorIcon CursorHand]
+    labelSS w = w `styleBasic` [bgColor bgCol, padding 6]
 
 rowBgs :: [Color]
 rowBgs = rowBgDark : rowBgLight : rowBgs
 
-handleEvent ::
-  WidgetEnv SearchModel SearchEvent ->
-  WidgetNode SearchModel SearchEvent ->
-  SearchModel ->
-  SearchEvent ->
-  [EventResponse SearchModel SearchEvent ep sp]
+handleEvent :: EventHandler SearchModel SearchEvent sp ep
 handleEvent _wenv _node model = \case
   StartSearch ->
     [ Model (storing searchResults OperationInProgress model)
@@ -179,6 +193,12 @@ handleEvent _wenv _node model = \case
           OperationSuccess (SearchResults searchDuration' searchSeq')
         searchResults' = either OperationFailure mkSuccess results
     in [Model (model & searchResults .~ searchResults')]
+  ShowEditOverlay key value ->
+    [Model (model & keyEditorModel ?~ initialModel (model ^. database) key value)]
+  HideEditOverlay ->
+    [Model (model & keyEditorModel .~ Nothing)]
+  SetKeyEditorModel val ->
+    [Model (model & keyEditorModel ?~ val)]
 
 search :: (Typeable s, Typeable e) => Database -> WidgetNode s e
 search db = compositeD_ "FBBE.Search" (WidgetValue initialModel) buildUI handleEvent [] where
@@ -191,6 +211,7 @@ search db = compositeD_ "FBBE.Search" (WidgetValue initialModel) buildUI handleE
         , _searchReverse = False
         }
     , _searchResults = OperationNotStarted
+    , _keyEditorModel = Nothing
     }
 
 type LabelStyleSetter = forall s e. WidgetNode s e -> WidgetNode s e
@@ -251,6 +272,3 @@ rowBgDark = rgbHex "#f3f6f6"
 
 rowTupleBorder :: Color
 rowTupleBorder = rgbHex "#e5e5e5"
-
-rowBgHover :: Color
-rowBgHover = rgbHex "#ffffff"

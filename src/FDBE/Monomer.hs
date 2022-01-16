@@ -3,16 +3,18 @@
 module FDBE.Monomer
 ( stdSpacer
 , intersperseSpacers
+, titleLabel
 , adwaitaTheme
 , compactTheme
 ) where
 
 import FDBE.Prelude
 import Data.List (intersperse)
-import Monomer
+import Monomer hiding (textColor)
 import Control.Lens
 import qualified Monomer.Core.Lens as L
 import qualified Monomer.Core.Themes.BaseTheme as T
+import qualified FDBE.Font as Font
 
 stdSpacer :: WidgetNode s e
 stdSpacer = spacer_ [width 2] -- todo: make feature request asking for cell margin instead
@@ -20,24 +22,41 @@ stdSpacer = spacer_ [width 2] -- todo: make feature request asking for cell marg
 intersperseSpacers :: [WidgetNode s e] -> [WidgetNode s e]
 intersperseSpacers = intersperse stdSpacer
 
+titleLabel :: Text -> WidgetNode s e
+titleLabel s =
+  label s `styleBasic` [textSize 14, textFont Font.bold, paddingV 8]
+
 adwaitaTheme :: Theme
 adwaitaTheme = compactTheme $ T.baseTheme lightThemeColors {
-  T.clearColor = rgbHex "#ededed",
-  T.btnBgBasic = rgbHex "#fefefe",
-  T.btnBgHover = rgbHex "#f7f6f6",
-  T.btnBgFocus = rgbHex "#f7f6f6",
-  T.btnBgActive = rgbHex "#e7e7e7",
-  T.btnBgDisabled = rgbHex "#d8d8d8",
-  T.btnText = rgbHex "#1c1c1c",
-  T.btnTextDisabled = rgbHex "#c7c8c6",
-  T.btnMainText = rgbHex "#ffffff",
-  T.btnMainBgBasic = rgbHex "#4077b2",
-  T.btnMainBgDisabled = rgbHex "#a8c1df",
-  T.inputBorder = rgbHex "#babdb6",
-  T.inputFocusBorder = rgbHex "#729fcf",
-  T.inputBgBasic = rgbHex "#ffffff",
-  T.inputSelFocus = rgbHex "#5a9adc"
-}
+    T.clearColor = clear,
+    T.btnBgBasic = btnBg,
+    T.btnBgHover = rgbHex "#f7f6f6",
+    T.btnBgFocus = rgbHex "#f7f6f6",
+    T.btnBgActive = rgbHex "#e7e7e7",
+    T.btnBgDisabled = btnBgDisabled,
+    T.btnText = text,
+    T.btnTextDisabled = textDisabled,
+    T.btnMainText = rgbHex "#ffffff",
+    T.btnMainBgBasic = rgbHex "#4077b2",
+    T.btnMainBgDisabled = rgbHex "#a8c1df",
+    T.inputText = text,
+    T.inputTextDisabled = textDisabled,
+    T.inputBorder = inputBorder,
+    T.inputFocusBorder = rgbHex "#729fcf",
+    T.inputBgBasic = rgbHex "#f9f9f9",
+    T.inputBgDisabled = btnBgDisabled,
+    T.inputFgDisabled = textDisabled,
+    T.inputSelFocus = rgbHex "#5a9adc",
+    T.dialogBg = clear,
+    T.iconBg = btnBg
+  }
+  where
+  text = rgbHex "#1c1c1c"
+  textDisabled = rgbHex "#96918c"--c7c8c6"
+  inputBorder = rgbHex "#c9c6c2"
+  btnBg = rgbHex "#fefefe"
+  btnBgDisabled = rgbHex "#eeeeed"--"#d8d8d8"
+  clear = rgbHex "#f2f1f0"
 
 compactTheme :: Theme -> Theme
 compactTheme t = t
@@ -46,7 +65,7 @@ compactTheme t = t
     & L.focus      %~ fixThemeState
     & L.focusHover %~ fixThemeState
     & L.active     %~ fixThemeState
-    & L.disabled   %~ fixThemeState
+    & L.disabled   %~ fixThemeState . fixDisabledThemeState
   where
     fontSize :: FontSize
     fontSize = FontSize 12
@@ -63,7 +82,15 @@ compactTheme t = t
       & L.dropdownItemSelectedStyle %~ fixStyleState . fixDropdownListItem
       & L.numericFieldStyle         %~ fixStyleState . fixTextInput
       & L.tooltipStyle              %~ fixStyleState
+      & L.dialogFrameStyle          %~ fixDialogFrameStyle
+      & L.dialogCloseIconStyle      %~ fixDialogCloseIconStyle
+      & L.dialogButtonsStyle        %~ fixDialogButtonsStyle
       & L.checkboxWidth             .~ 14
+    
+    fixDisabledThemeState :: ThemeState -> ThemeState
+    fixDisabledThemeState ts = ts
+       -- make the drop-down arrows go gray when disabled: move upstream?
+      & L.dropdownStyle . L.fgColor .~ (ts ^. L.checkboxStyle . L.fgColor)
 
     fixStyleState :: StyleState -> StyleState
     fixStyleState ss = ss
@@ -81,4 +108,17 @@ compactTheme t = t
 
     fixDropdownListItem :: StyleState -> StyleState
     fixDropdownListItem ss = ss
+      & L.padding ?~ padding 4
+    
+    fixDialogFrameStyle :: StyleState -> StyleState
+    fixDialogFrameStyle ss = ss
+      & L.radius ?~ radius 6
+    
+    fixDialogCloseIconStyle :: StyleState -> StyleState
+    fixDialogCloseIconStyle ss = ss
+      & L.radius ?~ radius 3
+      & L.padding ?~ padding 2
+    
+    fixDialogButtonsStyle :: StyleState -> StyleState
+    fixDialogButtonsStyle ss = ss
       & L.padding ?~ padding 4

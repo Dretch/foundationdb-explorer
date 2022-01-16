@@ -23,6 +23,8 @@ module FDBE.FoundationDB
   , getSearchResult
   , getKeyValue
   , setKeyValue
+  , encodeEditableBytes
+  , decodeEditableBytes
   ) where
 
 import           FDBE.Prelude
@@ -179,6 +181,11 @@ getSearchResult db SearchRange {..} =
 encodeEditableBytes :: EditableBytes -> ByteString
 encodeEditableBytes = either textToBytes (encodeTupleElems . fmap fromEditableElem)
 
+decodeEditableBytes :: ByteString -> EditableBytes
+decodeEditableBytes bs = case decode bs of
+  (_, Just elems) -> Right (toEditableElem <$> elems)
+  (bs', Nothing)  -> Left (bytesToText bs')
+
 decode :: ByteString -> (ByteString, Maybe [Elem])
 decode b = (b, hush (decodeTupleElems b))
 
@@ -186,13 +193,7 @@ getKeyValue :: Database -> EditableBytes -> IO (Either Error (Maybe EditableByte
 getKeyValue db key =
   try $ do
     val <- FDB.runTransaction db $ FDB.get (encodeEditableBytes key) >>= FDB.await
-    case val of
-      Nothing ->
-        pure Nothing
-      Just bs | Right tup <- decodeTupleElems bs ->
-        pure . Just . Right $ toEditableElem <$> tup
-      Just bs ->
-        pure . Just . Left $ bytesToText bs
+    pure $ decodeEditableBytes <$> val
 
 setKeyValue :: Database -> EditableBytes -> Maybe EditableBytes -> IO (Maybe Error)
 setKeyValue db key value =

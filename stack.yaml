@@ -34,14 +34,15 @@ resolver: lts-18.19
 #  - wai
 packages:
 - .
+- ../monomer/
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - nanovg-0.8.0.0
-- git: https://github.com/fjvallarino/monomer.git
-  commit: 8e3d676e1acf1555c876b19dba9497414d934579
+# - git: https://github.com/fjvallarino/monomer.git
+#   commit: 8e3d676e1acf1555c876b19dba9497414d934579
 - git: "https://github.com/crclark/foundationdb-haskell"
   commit: "15ab9678457ebd6986e31217213bcb2748d06134"
 

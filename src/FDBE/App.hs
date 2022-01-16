@@ -23,12 +23,7 @@ data AppModel = AppModel
   { _database :: Database
   , _visibleSection :: AppSection
   }
-  deriving (Show)
-
--- todo: something less awkward / error prone (write an issue?)
-instance Eq AppModel where
-  a == b =
-    _visibleSection a == _visibleSection b
+  deriving (Eq, Show)
 
 data AppSection
   = SplashSection
@@ -39,13 +34,10 @@ data AppSection
 -- todo: why do these have to be together? https://stackoverflow.com/questions/47742054/haskell-makelenses-data-constructor-not-in-scope
 makeLenses ''AppModel
 
-data AppEvent
+newtype AppEvent
   = OpenSection AppSection
 
-buildUI ::
-  WidgetEnv AppModel AppEvent ->
-  AppModel ->
-  WidgetNode AppModel AppEvent
+buildUI :: UIBuilder AppModel AppEvent
 buildUI _wenv model = tree where
 
   tree = case model ^. visibleSection of
@@ -76,12 +68,7 @@ buildUI _wenv model = tree where
   bigButton msg stn =
     button msg (OpenSection stn) `styleBasic` [border 4 lightGray, radius 10, textSize 20]
 
-handleEvent ::
-  WidgetEnv AppModel AppEvent ->
-  WidgetNode AppModel AppEvent ->
-  AppModel ->
-  AppEvent ->
-  [AppEventResponse AppModel AppEvent]
+handleEvent :: EventHandler AppModel AppEvent sp ep
 handleEvent _wenv _node model = \case
   OpenSection s ->
     [Model (model & visibleSection .~ s)]
@@ -95,5 +82,5 @@ start db = startApp model handleEvent buildUI config
       ] <> Font.fontDefs
     model = AppModel
       { _database = db
-      , _visibleSection = SplashSection
+      , _visibleSection = SearchSection
       }

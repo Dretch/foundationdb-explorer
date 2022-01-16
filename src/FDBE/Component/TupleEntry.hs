@@ -6,6 +6,7 @@
 -- | A component for editing foundationdb tuples
 module FDBE.Component.TupleEntry
   ( tupleEntry
+  , tupleEntryV
   ) where
 
 import FDBE.Prelude
@@ -27,13 +28,24 @@ tupleEntry
  => ALens' sp EditableBytes
  -> WidgetNode sp ep
 tupleEntry ls =
-  composite "FBDE.TupleEntry" ls buildUI handleEvent
+  composite widgetType ls buildUI handleEvent
+
+tupleEntryV
+ :: (CompositeEvent ep, CompParentModel sp)
+ => EditableBytes
+ -> (EditableBytes -> ep)
+ -> WidgetNode sp ep
+tupleEntryV value handler =
+  compositeV widgetType value handler buildUI handleEvent
+
+widgetType :: WidgetType
+widgetType = "FBDE.TupleEntry"
 
 buildUI :: UIBuilder EditableBytes TupleEntryEvent
 buildUI _wenv model = tree where
   tree = hstack $ intersperseSpacers [
       textDropdownSV (getEditAs model) (TupleValueChanged . setEditAs model) [EditAsRaw, EditAsTuple]
-        `styleBasic` [sizeReqW (fixedSize 80)],
+        `styleBasic` [sizeReqW (fixedSize 60)],
       editor
     ]
 
@@ -63,7 +75,7 @@ tupleEntry' elems elmsChange =
 
       elemTypeCombo =
         textDropdownSV (getElemType elm) (\et -> elmsChange (setAt i (setElemType elm et) elems)) (enumFrom None')
-          `styleBasic` [sizeReqW (fixedSize 120)]
+          `styleBasic` [sizeReqW (fixedSize 100)]
 
       elemInput = case elm of
         None             -> noneInput
@@ -260,10 +272,3 @@ escapeSyntaxHelp :: Text
 escapeSyntaxHelp =
   "Text will be UTF-8 encoded except for byte values specified in hex, like \
    \'\\xA0'. Use double slash '\\\\' to enter a single slash."
-
-    -- -- | This is a lens that appears to the outside like it gets/sets EditAs values, but
-    -- -- actually internally it switches an EditableBytes between text and tuple form.
-    -- newLens :: ALens' s EditAs
-    -- newLens = lens
-    --     (\s -> getEditAs (s ^# ebLens))
-    --     (\s b -> storing ebLens (setEditAs (s ^# ebLens) b) s)
