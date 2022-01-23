@@ -17,7 +17,7 @@ module FDBE.Component.JGrid (
 
 import FDBE.Prelude hiding (or, span)
 
-import Control.Lens ((&), (.~))
+import Control.Lens ((&), (.~), (%~))
 import Monomer
 import qualified Monomer.Lens as L
 import Monomer.Widgets.Container
@@ -122,14 +122,13 @@ jgrid_ configs rows =
     nCols = fromMaybe 0 $ maximumMay (length . jgrCols <$> rows)
 
     spacing = fromMaybe 0 (jgcChildSpacing config)
-    spacingTotalX = spacing * max 0 (fromIntegral nCols - 1)
-    spacingTotalY = spacing * max 0 (fromIntegral nRows - 1)
+    spacingTotalW = spacing * max 0 (fromIntegral nCols - 1)
+    spacingTotalH = spacing * max 0 (fromIntegral nRows - 1)
 
-    -- todo: use flex/extra/factor?
     getSizeReq _wenv _node children = (w, h) where
       (wReqs, hReqs) = toSizeReqs model children
-      w = SizeReq (sum (_szrFixed <$> wReqs) + spacingTotalX) 0 0 1
-      h = SizeReq (sum (_szrFixed <$> hReqs) + spacingTotalY) 0 0 1
+      w = foldl' sizeReqMergeSum (fixedSize 0) wReqs & L.fixed %~ (+ spacingTotalW)
+      h = foldl' sizeReqMergeSum (fixedSize 0) hReqs & L.fixed %~ (+ spacingTotalH)
 
     resize wenv node viewport children = (resultNode node, assignedAreas) where
       style = currentStyle wenv node
@@ -146,8 +145,8 @@ jgrid_ configs rows =
 
       (wReqs, hReqs) = toSizeReqs model children
 
-      colXs = sizesToPositions (cellSize wReqs (w - spacingTotalX))
-      colYs = sizesToPositions (cellSize hReqs (h - spacingTotalY))
+      colXs = sizesToPositions (cellSize wReqs (w - spacingTotalW))
+      colYs = sizesToPositions (cellSize hReqs (h - spacingTotalH))
 
 cellSize :: Seq SizeReq -> Double -> Seq Double
 cellSize reqs available = reqResult <$> reqs where
@@ -230,7 +229,7 @@ toSizeReqs' = foldl' mergeWidget mempty where
         error "Todo: implement this branch! (it has not been needed yet...)"
     -- fill up occupiedReqs, then the unoccupied ones with anything left over...
     where
-    
+
     occupiedReqs :: [(Int, SizeReq)]
     occupiedReqs =
       [(p, r) | p <- [start..start + span - 1], Just r <- [S.lookup p reqs]]
@@ -238,7 +237,7 @@ toSizeReqs' = foldl' mergeWidget mempty where
     unoccuppiedReqs :: [Int]
     unoccuppiedReqs =
       [p | p <- [start..start + span - 1], Nothing <- [S.lookup p reqs]]
- 
+
 multSizeReq :: SizeReq -> Double -> SizeReq
 multSizeReq (SizeReq fixed flex extra factor) m = SizeReq {
     _szrFixed = m * fixed,

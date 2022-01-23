@@ -4,6 +4,7 @@
 module FDBE.Component.KeyEditor
 ( KeyEditorModel(..)
 , initialModel
+, initialModel_
 , keyEditor
 ) where
 
@@ -15,8 +16,8 @@ import Control.Lens hiding (op)
 import Control.Exception (displayException)
 import Data.Text (pack)
 import FoundationDB (Database)
-import FDBE.Component.TupleEntry (tupleEntry, tupleEntryV)
-import FDBE.Monomer (titleLabel)
+import FDBE.Component.TupleEntry (tupleEntryV)
+import FDBE.Monomer (titleLabel, sizeReqUpdaterFlexMax)
 import Control.Monad (join)
 
 -- todo: remove/shorten prefixes?
@@ -58,12 +59,12 @@ keyEditor model changeHandler =
 buildUI :: UIBuilder KeyEditorModel KeyEditorEvent
 buildUI _wenv model = stack where
   stack =
-    vstack_ [childSpacing_ 10] [
+    vstack_ [childSpacing_ 10, sizeReqUpdaterFlexMax] [
       titleBox "Key" [tupleEntryV (model ^. keyEditorKey) UpdateKeyEditorKey],
       titleBox "Existing Value" (loadValueAtKeyButton : loadedBoxChildren),
       titleBox "New Value" [copyExistingButton]
     ]
-
+  
   loadValueAtKeyButton =
     button "Load value at key" LoadKeyEditorOldValue
       `nodeEnabled` (model ^. keyEditorOldValue /= OperationInProgress)
@@ -87,8 +88,7 @@ buildUI _wenv model = stack where
 
 titleBox :: Text -> [WidgetNode KeyEditorModel KeyEditorEvent] -> WidgetNode KeyEditorModel KeyEditorEvent
 titleBox title contents =
-  -- todo:fix button borders! min width/height!
-  box (vstack_ [childSpacing_ 2] (titleLabel title : contents))
+  box (vstack_ [childSpacing_ 2, sizeReqUpdaterFlexMax] (titleLabel title : contents))
   `styleBasic` [border 1 (rgbHex "#c9c6c2"), padding 4, radius 3]
 
 existsCombo
@@ -130,13 +130,22 @@ handleEvent _wenv _node model = \case
   PointlessEvent -> -- todo: avoid somehow...
     []
 
-initialModel :: Database -> ByteString -> ByteString -> KeyEditorModel
-initialModel database key value = KeyEditorModel
+initialModel :: Database -> KeyEditorModel
+initialModel db = KeyEditorModel
+  { _keyEditorKey = Left ""
+  , _keyEditorOldValue = OperationNotStarted
+  , _keyEditorNewValue = Nothing
+  , _keyEditorSave = OperationNotStarted
+  , _database = db
+  }
+
+initialModel_ :: Database -> ByteString -> ByteString -> KeyEditorModel
+initialModel_ db key value = KeyEditorModel
   { _keyEditorKey = keyEb
   , _keyEditorOldValue = OperationSuccess (Just valueEb)
   , _keyEditorNewValue = Nothing
   , _keyEditorSave = OperationNotStarted
-  , _database = database
+  , _database = db
   }
   where
     keyEb = decodeEditableBytes key

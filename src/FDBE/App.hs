@@ -17,61 +17,67 @@ import FoundationDB (Database)
 import FDBE.Component.Search (search)
 import FDBE.Component.Status (status)
 import qualified FDBE.Font as Font
-import FDBE.Monomer (adwaitaTheme)
+import FDBE.Monomer (adwaitaTheme, sizeReqUpdaterFlexMax)
+import FDBE.Component.KeyEditor (KeyEditorModel)
+import qualified FDBE.Component.KeyEditor as KeyEditor
 
 data AppModel = AppModel
   { _database :: Database
-  , _visibleSection :: AppSection
+  , _appAlert :: AppAlert 
   }
   deriving (Eq, Show)
 
-data AppSection
-  = SplashSection
-  | StatusSection
-  | SearchSection
+data AppAlert
+  = AlertNone
+  | AlertStatus
+  | AlertKeyEditor KeyEditorModel
   deriving (Eq, Show)
 
 -- todo: why do these have to be together? https://stackoverflow.com/questions/47742054/haskell-makelenses-data-constructor-not-in-scope
 makeLenses ''AppModel
 
-newtype AppEvent
-  = OpenSection AppSection
+data AppEvent
+  = ShowKeyEditorAlert ByteString ByteString
+  | ShowEmptyKeyEditorAlert
+  | ShowStatusAlert
+  | SetKeyEditorModel KeyEditorModel
+  | HideAlert
 
 buildUI :: UIBuilder AppModel AppEvent
-buildUI _wenv model = tree where
+buildUI _wenv model = widgetStack where
 
-  tree = case model ^. visibleSection of
-    StatusSection ->
-      status (model ^. database)
-    SplashSection ->
-      hstack [
-        filler,
-        vstack [
-          filler,
-          label "FoundationDB Explorer" `styleBasic` [textSize 40, textCenter, padding 15],
-          label "What would you like to do?" `styleBasic` [textSize 16, textCenter, padding 15],
-          spacer,
-          bigButton "View Database Status" StatusSection,
-          spacer,
-          bigButton "Fetch Keys and Values" SearchSection,
-          spacer,
-          bigButton "Write or Update a Value" SplashSection,
-          spacer,
-          image_ "./assets/icon.png" [alignCenter] `styleBasic` [padding 20, maxHeight 100, maxWidth 100],
-          filler
-        ],
-        filler
-      ]
-    SearchSection ->
-      search (model ^. database)
+  widgetStack = zstack [
+      vstack_ [sizeReqUpdaterFlexMax] [
+        hgrid_ [childSpacing_ 2] [
+          button "Database Status" ShowStatusAlert,
+          button "Edit Value at Key" ShowEmptyKeyEditorAlert
+        ] `styleBasic` [padding 2],
+        search (model ^. database) ShowKeyEditorAlert
+      ],
+     maybeAlert
+   ]
   
-  bigButton msg stn =
-    button msg (OpenSection stn) `styleBasic` [border 4 lightGray, radius 10, textSize 20]
+  -- todo: why do we get "("Failed match on Composite handleMessage",StatusEvent)" errors after changing from status to editor?
+  maybeAlert = case model ^. appAlert of
+    AlertNone ->
+      spacer `nodeVisible` False
+    AlertStatus ->
+      alert HideAlert (status (model ^. database))
+    AlertKeyEditor keModel ->
+      alert HideAlert (KeyEditor.keyEditor keModel SetKeyEditorModel)
 
 handleEvent :: EventHandler AppModel AppEvent sp ep
 handleEvent _wenv _node model = \case
-  OpenSection s ->
-    [Model (model & visibleSection .~ s)]
+  ShowKeyEditorAlert key value ->
+    [Model (model & appAlert .~ AlertKeyEditor (KeyEditor.initialModel_ (model ^. database) key value))]
+  ShowEmptyKeyEditorAlert ->
+    [Model (model & appAlert .~ AlertKeyEditor (KeyEditor.initialModel (model ^. database)))]
+  ShowStatusAlert ->
+    [Model (model & appAlert .~ AlertStatus)]
+  HideAlert ->
+    [Model (model & appAlert .~ AlertNone)]
+  SetKeyEditorModel val ->
+    [Model (model & appAlert .~ AlertKeyEditor val)]
 
 start :: Database -> IO ()
 start db = startApp model handleEvent buildUI config
@@ -82,5 +88,5 @@ start db = startApp model handleEvent buildUI config
       ] <> Font.fontDefs
     model = AppModel
       { _database = db
-      , _visibleSection = SearchSection
+      , _appAlert = AlertNone
       }

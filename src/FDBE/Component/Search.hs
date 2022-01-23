@@ -29,13 +29,11 @@ import FoundationDB.Layer.Tuple (Elem)
 import qualified FoundationDB.Layer.Tuple as LT
 import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp, IncompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp))
-import FDBE.Component.KeyEditor (KeyEditorModel, initialModel, keyEditor)
 
 data SearchModel = SearchModel
   { _database :: Database
   , _searchRange :: SearchRange
   , _searchResults :: Operation SearchResults
-  , _keyEditorModel :: Maybe KeyEditorModel
   }
   deriving (Eq, Show)
 
@@ -46,6 +44,8 @@ data SearchResults =
     }
   deriving (Eq, Show)
 
+type ShowEditorEvent e = ByteString -> ByteString -> e
+
 -- todo: why do these have to be together? https://stackoverflow.com/questions/47742054/haskell-makelenses-data-constructor-not-in-scope
 makeLenses ''SearchModel
 makeLenses ''SearchResults
@@ -53,17 +53,10 @@ makeLenses ''SearchResults
 data SearchEvent
   = StartSearch
   | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
-  | ShowEditOverlay ByteString ByteString
-  | HideEditOverlay
-  | SetKeyEditorModel KeyEditorModel
+  | EditSearchResult ByteString ByteString
 
 buildUI :: UIBuilder SearchModel SearchEvent
-buildUI _wenv model = widgetStack where
-
-  widgetStack = zstack [
-      searchGrid,
-      maybe (spacer `nodeVisible` False) editOverlay (model ^. keyEditorModel)
-    ]
+buildUI _wenv model = searchGrid where
 
   searchGrid =
     jgrid_ [childSpacing_ 2] [
@@ -125,9 +118,6 @@ buildUI _wenv model = widgetStack where
   searchNotInProgress =
     model ^. searchResults /= OperationInProgress
 
-  editOverlay model =
-    alert HideEditOverlay (keyEditor model SetKeyEditorModel)
-
 resultRow :: Word -> Word -> Color -> SearchResult -> JGridRow SearchModel SearchEvent
 resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
   jrow $
@@ -136,7 +126,7 @@ resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
     editCell :: JGridCol s SearchEvent
     editCell =
       jcol $
-        button "Edit" (ShowEditOverlay (fst _resultKey) (fst _resultValue))
+        button "Edit" (EditSearchResult (fst _resultKey) (fst _resultValue))
           `styleBasic` [textSize 10, border 0 white]
 
     eqCell :: JGridCol s e
@@ -178,8 +168,8 @@ resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
 rowBgs :: [Color]
 rowBgs = rowBgDark : rowBgLight : rowBgs
 
-handleEvent :: EventHandler SearchModel SearchEvent sp ep
-handleEvent _wenv _node model = \case
+handleEvent :: ShowEditorEvent ep -> EventHandler SearchModel SearchEvent sp ep
+handleEvent showEditorEvent _wenv _node model = \case
   StartSearch ->
     [ Model (storing searchResults OperationInProgress model)
     , Task $ do
@@ -191,15 +181,17 @@ handleEvent _wenv _node model = \case
           OperationSuccess (SearchResults searchDuration' searchSeq')
         searchResults' = either OperationFailure mkSuccess results
     in [Model (model & searchResults .~ searchResults')]
-  ShowEditOverlay key value ->
-    [Model (model & keyEditorModel ?~ initialModel (model ^. database) key value)]
-  HideEditOverlay ->
-    [Model (model & keyEditorModel .~ Nothing)]
-  SetKeyEditorModel val ->
-    [Model (model & keyEditorModel ?~ val)]
+  EditSearchResult key value ->
+    [Report (showEditorEvent key value)]
 
-search :: (Typeable s, Typeable e) => Database -> WidgetNode s e
-search db = compositeD_ "FBBE.Search" (WidgetValue initialModel) buildUI handleEvent [] where
+search
+ :: (Typeable s, Typeable e)
+ => Database
+ -> ShowEditorEvent e
+ -> WidgetNode s e
+search db showEditorEvent = comp where
+  comp =
+    compositeD_ "FBBE.Search" (WidgetValue initialModel) buildUI (handleEvent showEditorEvent) []
   initialModel = SearchModel
     { _database = db
     , _searchRange = SearchRange
@@ -209,7 +201,6 @@ search db = compositeD_ "FBBE.Search" (WidgetValue initialModel) buildUI handleE
         , _searchReverse = False
         }
     , _searchResults = OperationNotStarted
-    , _keyEditorModel = Nothing
     }
 
 type LabelStyleSetter = forall s e. WidgetNode s e -> WidgetNode s e

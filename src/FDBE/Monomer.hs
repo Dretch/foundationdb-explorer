@@ -1,7 +1,7 @@
-{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 {- Helpers to make Monomer easier to use -}
 module FDBE.Monomer
 ( titleLabel
+, sizeReqUpdaterFlexMax
 , adwaitaTheme
 , compactTheme
 ) where
@@ -16,6 +16,10 @@ import qualified FDBE.Font as Font
 titleLabel :: Text -> WidgetNode s e
 titleLabel s =
   label s `styleBasic` [textSize 14, textFont Font.bold, paddingV 8]
+
+sizeReqUpdaterFlexMax :: CmbSizeReqUpdater t => t
+sizeReqUpdaterFlexMax = sizeReqUpdater (bimap flexMax flexMax) where
+  flexMax req = req { _szrFlex = 10000 }
 
 adwaitaTheme :: Theme
 adwaitaTheme = compactTheme $ T.baseTheme lightThemeColors {
@@ -77,7 +81,7 @@ compactTheme t = t
       & L.dialogCloseIconStyle      %~ fixDialogCloseIconStyle
       & L.dialogButtonsStyle        %~ fixDialogButtonsStyle
       & L.checkboxWidth             .~ 14
-    
+
     fixDisabledThemeState :: ThemeState -> ThemeState
     fixDisabledThemeState ts = ts
        -- make the drop-down arrows go gray when disabled: move upstream?
@@ -86,12 +90,12 @@ compactTheme t = t
     fixStyleState :: StyleState -> StyleState
     fixStyleState ss = ss
       & L.text . non def . L.fontSize ?~ fontSize
-    
+
     fixBtnStyle :: StyleState -> StyleState
     fixBtnStyle ss = ss
       & L.padding ?~ padding 4
       & L.radius  ?~ radius 3
-    
+
     fixTextInput :: StyleState -> StyleState
     fixTextInput ss = ss
       & L.padding ?~ padding 4
@@ -100,16 +104,16 @@ compactTheme t = t
     fixDropdownListItem :: StyleState -> StyleState
     fixDropdownListItem ss = ss
       & L.padding ?~ padding 4
-    
+
     fixDialogFrameStyle :: StyleState -> StyleState
     fixDialogFrameStyle ss = ss
       & L.radius ?~ radius 6
-    
+
     fixDialogCloseIconStyle :: StyleState -> StyleState
     fixDialogCloseIconStyle ss = ss
       & L.radius ?~ radius 3
       & L.padding ?~ padding 2
-    
+
     fixDialogButtonsStyle :: StyleState -> StyleState
     fixDialogButtonsStyle ss = ss
       & L.padding ?~ padding 4
