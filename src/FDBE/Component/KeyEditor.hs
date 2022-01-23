@@ -16,7 +16,7 @@ import Control.Exception (displayException)
 import Data.Text (pack)
 import FoundationDB (Database)
 import FDBE.Component.TupleEntry (tupleEntry, tupleEntryV)
-import FDBE.Monomer (titleLabel, intersperseSpacers)
+import FDBE.Monomer (titleLabel)
 import Control.Monad (join)
 
 -- todo: remove/shorten prefixes?
@@ -58,18 +58,16 @@ keyEditor model changeHandler =
 buildUI :: UIBuilder KeyEditorModel KeyEditorEvent
 buildUI _wenv model = stack where
   stack =
-    vstack [
+    vstack_ [childSpacing_ 10] [
       titleBox "Key" [tupleEntryV (model ^. keyEditorKey) UpdateKeyEditorKey],
-      spacer,
-      titleBox "Existing Value" (intersperseSpacers (loadValueAtKeyButton : loadedBoxChildren)),
-      spacer,
-      titleBox "New Value" (intersperseSpacers (copyExistingButton : []))
+      titleBox "Existing Value" (loadValueAtKeyButton : loadedBoxChildren),
+      titleBox "New Value" [copyExistingButton]
     ]
-  
+
   loadValueAtKeyButton =
     button "Load value at key" LoadKeyEditorOldValue
       `nodeEnabled` (model ^. keyEditorOldValue /= OperationInProgress)
-  
+
   loadedBoxChildren = case model ^. keyEditorOldValue of
     OperationNotStarted -> []
     OperationInProgress -> []
@@ -82,7 +80,7 @@ buildUI _wenv model = stack where
       in (`nodeEnabled` False) <$> combo : entry
     OperationFailure msg ->
       [label msg]
-  
+
   copyExistingButton =
     button "Copy from existing value" UpdateKeyEditorNewValueCopyOld
       `nodeEnabled` (isJust . operationSuccess $ model ^. keyEditorOldValue)
@@ -90,7 +88,7 @@ buildUI _wenv model = stack where
 titleBox :: Text -> [WidgetNode KeyEditorModel KeyEditorEvent] -> WidgetNode KeyEditorModel KeyEditorEvent
 titleBox title contents =
   -- todo:fix button borders! min width/height!
-  box (vstack (titleLabel title : contents))
+  box (vstack_ [childSpacing_ 2] (titleLabel title : contents))
   `styleBasic` [border 1 (rgbHex "#c9c6c2"), padding 4, radius 3]
 
 existsCombo

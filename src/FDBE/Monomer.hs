@@ -1,26 +1,17 @@
 {-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
 {- Helpers to make Monomer easier to use -}
 module FDBE.Monomer
-( stdSpacer
-, intersperseSpacers
-, titleLabel
+( titleLabel
 , adwaitaTheme
 , compactTheme
 ) where
 
 import FDBE.Prelude
-import Data.List (intersperse)
 import Monomer hiding (textColor)
 import Control.Lens
 import qualified Monomer.Core.Lens as L
 import qualified Monomer.Core.Themes.BaseTheme as T
 import qualified FDBE.Font as Font
-
-stdSpacer :: WidgetNode s e
-stdSpacer = spacer_ [width 2] -- todo: make feature request asking for cell margin instead
-
-intersperseSpacers :: [WidgetNode s e] -> [WidgetNode s e]
-intersperseSpacers = intersperse stdSpacer
 
 titleLabel :: Text -> WidgetNode s e
 titleLabel s =

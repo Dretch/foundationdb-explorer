@@ -19,7 +19,6 @@ import GHC.Float (double2Float, float2Double)
 import qualified FoundationDB.Layer.Tuple as LT
 import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp), VersionstampCompleteness (Complete))
-import FDBE.Monomer (intersperseSpacers)
 
 data TupleEntryEvent = TupleValueChanged EditableBytes
 
@@ -43,7 +42,7 @@ widgetType = "FBDE.TupleEntry"
 
 buildUI :: UIBuilder EditableBytes TupleEntryEvent
 buildUI _wenv model = tree where
-  tree = hstack $ intersperseSpacers [
+  tree = hstack_ [childSpacing_ 2] [
       textDropdownSV (getEditAs model) (TupleValueChanged . setEditAs model) [EditAsRaw, EditAsTuple]
         `styleBasic` [sizeReqW (fixedSize 60)],
       editor
@@ -61,13 +60,13 @@ tupleEntry'
  -> ([EditableElem] -> e)
  -> WidgetNode s e
 tupleEntry' elems elmsChange =
-    vstack $
-      intersperseSpacers $ imap elemEntry elems <> [addElemButton]
+    vstack_ [childSpacing_ 2] $
+      imap elemEntry elems <> [addElemButton]
   where
 
     elemEntry :: Int -> EditableElem -> WidgetNode s e
     elemEntry i elm = elemTree where
-      elemTree = hstack $ intersperseSpacers [
+      elemTree = hstack_ [childSpacing_ 2] [
           elemTypeCombo,
           elemInput,
           removeElemButton
@@ -131,7 +130,7 @@ tupleEntry' elems elmsChange =
       
       completeVSInput :: Versionstamp 'Complete -> WidgetNode s e
       completeVSInput (CompleteVersionstamp (TransactionVersionstamp tx batch) usr) =
-        hstack $ intersperseSpacers [
+        hstack_ [childSpacing_ 2] [
           label "Tx:",
           numericFieldV_ tx (onElemChange . CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch) [wheelRate 10],
           label "Batch:",

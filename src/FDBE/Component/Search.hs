@@ -10,7 +10,7 @@ module FDBE.Component.Search (search) where
 
 import FDBE.Prelude
 import FDBE.Component.TupleEntry
-import FDBE.FoundationDB (SearchResult (..), SearchRange (..), searchFrom, searchTo, searchLimit, searchReverse, getSearchResult, EditableElem, EditableBytes)
+import FDBE.FoundationDB (SearchResult (..), SearchRange (..), searchFrom, searchTo, searchLimit, searchReverse, getSearchResult)
 
 import Control.Lens
 import qualified Data.Sequence                               as S
@@ -23,15 +23,13 @@ import FDBE.State (Operation(..))
 import Control.Exception (displayException)
 import qualified Data.Foldable as Foldable
 import FDBE.Bytes (bytesToText)
-import FDBE.Component.JGrid (JGridRow, jcol, jrow, childSpacing, jgrid_, colSpan, jcol_, JGridCol, jgrid)
+import FDBE.Component.JGrid (JGridRow, jcol, jrow, jgrid_, colSpan, jcol_, JGridCol, jgrid)
 import qualified FDBE.Font as Font
 import FoundationDB.Layer.Tuple (Elem)
 import qualified FoundationDB.Layer.Tuple as LT
 import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp, IncompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp))
 import FDBE.Component.KeyEditor (KeyEditorModel, initialModel, keyEditor)
-import Data.Maybe (Maybe(Nothing))
-import Monomer.Core.Lens (HasFontSize(fontSize))
 
 data SearchModel = SearchModel
   { _database :: Database
@@ -68,7 +66,7 @@ buildUI _wenv model = widgetStack where
     ]
 
   searchGrid =
-    jgrid_ [childSpacing 2] [
+    jgrid_ [childSpacing_ 2] [
       jrow [
         jcol $ label "From",
         jcol $ tupleEntry (searchRange . searchFrom)
@@ -83,7 +81,7 @@ buildUI _wenv model = widgetStack where
       ],
       jrow [
         jcol spacer,
-        jcol $ labeledCheckbox_ "Reverse Order" (searchRange . searchReverse) [textRight]
+        jcol $ labeledCheckbox_ "Reverse Order" (searchRange . searchReverse) [textRight, childSpacing_ 2]
       ],
       jrow [
         jcol_ [colSpan 2] $ hstack [

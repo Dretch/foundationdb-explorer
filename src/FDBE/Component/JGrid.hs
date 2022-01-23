@@ -7,9 +7,6 @@ module FDBE.Component.JGrid (
   JGridRow,
   JGridCol,
   JGridColCfg,
-  childSpacingX,
-  childSpacingY,
-  childSpacing,
   colSpan,
   jgrid,
   jgrid_,
@@ -31,36 +28,27 @@ import Control.Applicative ((<|>))
 import Data.Sequence ((|>))
 import Safe (maximumMay)
 
-data JGridCfg = JGridCfg
-  { jgcChildSpacingX :: Maybe Double
-  , jgcChildSpacingY :: Maybe Double
+newtype JGridCfg = JGridCfg
+  { jgcChildSpacing :: Maybe Double
   } deriving (Eq, Show)
 
 instance Default JGridCfg where
   def = JGridCfg
-    { jgcChildSpacingX = Nothing
-    , jgcChildSpacingY = Nothing
+    { jgcChildSpacing = Nothing
     }
 
 instance Semigroup JGridCfg where
   c1 <> c2 = JGridCfg
-    { jgcChildSpacingX = jgcChildSpacingX c2 <|> jgcChildSpacingX c1
-    , jgcChildSpacingY = jgcChildSpacingY c2 <|> jgcChildSpacingY c1
+    { jgcChildSpacing = jgcChildSpacing c2 <|> jgcChildSpacing c1
     }
 
 instance Monoid JGridCfg where
   mempty = def
 
--- todo: make class? (could be useful on other containers too?)
-childSpacingX :: Double -> JGridCfg
-childSpacingX x = def { jgcChildSpacingX = Just x }
-
--- todo: make class?
-childSpacingY :: Double -> JGridCfg
-childSpacingY y = def { jgcChildSpacingY = Just y }
-
-childSpacing :: Double -> JGridCfg
-childSpacing xy = def { jgcChildSpacingX = Just xy, jgcChildSpacingY = Just xy }
+instance CmbChildSpacing JGridCfg where
+  childSpacing_ spacing = def {
+    jgcChildSpacing = Just spacing
+  }
 
 newtype JGridRow s e = JGridRow
   { jgrCols :: [JGridCol s e]
@@ -133,11 +121,9 @@ jgrid_ configs rows =
     nRows = length rows
     nCols = fromMaybe 0 $ maximumMay (length . jgrCols <$> rows)
 
-    spacingX = fromMaybe 0 (jgcChildSpacingX config)
-    spacingY = fromMaybe 0 (jgcChildSpacingY config)
-
-    spacingTotalX = spacingX * max 0 (fromIntegral nCols - 1)
-    spacingTotalY = spacingY * max 0 (fromIntegral nRows - 1)
+    spacing = fromMaybe 0 (jgcChildSpacing config)
+    spacingTotalX = spacing * max 0 (fromIntegral nCols - 1)
+    spacingTotalY = spacing * max 0 (fromIntegral nRows - 1)
 
     -- todo: use flex/extra/factor?
     getSizeReq _wenv _node children = (w, h) where
@@ -152,8 +138,8 @@ jgrid_ configs rows =
       assignedAreas =
         flip fmap modelSeq $ \childModel ->
           let JGridModelWidget{jgmCol, jgmRow, jgmColSpan} = childModel
-              chX = l + S.index colXs jgmCol + spacingX * fromIntegral jgmCol
-              chY = t + S.index colYs jgmRow + spacingY * fromIntegral jgmRow
+              chX = l + S.index colXs jgmCol + spacing * fromIntegral jgmCol
+              chY = t + S.index colYs jgmRow + spacing * fromIntegral jgmRow
               chW = S.index colXs (jgmCol + jgmColSpan) - S.index colXs jgmCol
               chH = S.index colYs (jgmRow + 1) - S.index colYs jgmRow
           in Rect chX chY chW chH
