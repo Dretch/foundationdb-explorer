@@ -1,10 +1,12 @@
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module FDBE.Component.Search (search) where
 
@@ -31,24 +33,22 @@ import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp, IncompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp))
 
 data SearchModel = SearchModel
-  { _database :: Database
-  , _searchRange :: SearchRange
-  , _searchResults :: Operation SearchResults
+  { _smDatabase :: Database
+  , _smRange    :: SearchRange
+  , _smResults  :: Operation SearchResults
   }
   deriving (Eq, Show)
 
 data SearchResults =
   SearchResults
-    { _searchDuration :: NominalDiffTime
-    , _searchSeq      :: Seq SearchResult
+    { _srDuration :: NominalDiffTime
+    , _srSeq      :: Seq SearchResult
     }
   deriving (Eq, Show)
 
 type ShowEditorEvent e = ByteString -> ByteString -> e
 
--- todo: why do these have to be together? https://stackoverflow.com/questions/47742054/haskell-makelenses-data-constructor-not-in-scope
-makeLenses ''SearchModel
-makeLenses ''SearchResults
+makeLensesWith abbreviatedFields ''SearchModel
 
 data SearchEvent
   = StartSearch
@@ -62,19 +62,19 @@ buildUI _wenv model = searchGrid where
     jgrid_ [childSpacing_ 2] [
       jrow [
         jcol $ label "From",
-        jcol $ tupleEntry (searchRange . searchFrom)
+        jcol $ tupleEntry (range . searchFrom)
       ],
       jrow [
         jcol $ label "To",
-        jcol $ tupleEntry (searchRange . searchTo)
+        jcol $ tupleEntry (range . searchTo)
       ],
       jrow [
         jcol $ label "Limit",
-        jcol $ numericField_ (searchRange . searchLimit) [minValue 0, wheelRate 10] -- todo: why is minValue ignored?
+        jcol $ numericField_ (range . searchLimit) [minValue 0, wheelRate 10] -- todo: why is minValue ignored?
       ],
       jrow [
         jcol spacer,
-        jcol $ labeledCheckbox_ "Reverse Order" (searchRange . searchReverse) [textRight, childSpacing_ 2]
+        jcol $ labeledCheckbox_ "Reverse Order" (range . searchReverse) [textRight, childSpacing_ 2]
       ],
       jrow [
         jcol_ [colSpan 2] $ hstack [
@@ -83,7 +83,7 @@ buildUI _wenv model = searchGrid where
         ]
       ],
       jrow [
-        jcol_ [colSpan 2] results
+        jcol_ [colSpan 2] resultsGrid
       ],
       jrow [
         jcol_ [colSpan 2] $ vstack [
@@ -93,30 +93,30 @@ buildUI _wenv model = searchGrid where
       ]
     ] `styleBasic` [padding 2]  `nodeEnabled` searchNotInProgress
 
-  results = case model ^. searchResults of
+  resultsGrid = case model ^. results of
     OperationNotStarted ->
       label ""
     OperationInProgress ->
       label "Loading..." `styleBasic` [textCenter]
     OperationFailure msg ->
       label ("Search Failed: " <> msg) `styleBasic` [textCenter]
-    OperationSuccess SearchResults { _searchSeq = rows } ->
+    OperationSuccess SearchResults { _srSeq = rows } ->
       let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
           valueWidth = fromMaybe 1 $ maxValueTupleSize rows
        in scroll $
             jgrid $
               zipWith (resultRow keyWidth valueWidth) rowBgs (Foldable.toList rows)
 
-  statusText = case model ^. searchResults of
-    OperationSuccess SearchResults { _searchDuration, _searchSeq } ->
-      let nRows = show $ S.length _searchSeq
-          dur = printf "%.3fs" (realToFrac _searchDuration :: Double)
+  statusText = case model ^. results of
+    OperationSuccess SearchResults { _srDuration, _srSeq } ->
+      let nRows = show $ S.length _srSeq
+          dur = printf "%.3fs" (realToFrac _srDuration :: Double)
        in T.pack $ "Fetched " <> nRows <> " keys in " <> dur
     _ ->
      ""
 
   searchNotInProgress =
-    model ^. searchResults /= OperationInProgress
+    model ^. results /= OperationInProgress
 
 resultRow :: Word -> Word -> Color -> SearchResult -> JGridRow SearchModel SearchEvent
 resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
@@ -171,16 +171,16 @@ rowBgs = rowBgDark : rowBgLight : rowBgs
 handleEvent :: ShowEditorEvent ep -> EventHandler SearchModel SearchEvent sp ep
 handleEvent showEditorEvent _wenv _node model = \case
   StartSearch ->
-    [ Model (storing searchResults OperationInProgress model)
+    [ Model (storing results OperationInProgress model)
     , Task $ do
-        res <- getSearchResult (model ^. database) (model ^. searchRange)
+        res <- getSearchResult (model ^. database) (model ^. range)
         pure . FinishSearch $ mapLeft (T.pack . displayException) res
     ]
-  FinishSearch results ->
+  FinishSearch newResults ->
     let mkSuccess (searchDuration', searchSeq') =
           OperationSuccess (SearchResults searchDuration' searchSeq')
-        searchResults' = either OperationFailure mkSuccess results
-    in [Model (model & searchResults .~ searchResults')]
+        searchResults' = either OperationFailure mkSuccess newResults
+    in [Model (model & results .~ searchResults')]
   EditSearchResult key value ->
     [Report (showEditorEvent key value)]
 
@@ -190,17 +190,21 @@ search
  -> ShowEditorEvent e
  -> WidgetNode s e
 search db showEditorEvent = comp where
-  comp =
-    compositeD_ "FBBE.Search" (WidgetValue initialModel) buildUI (handleEvent showEditorEvent) []
+  comp = compositeD_
+    "FBBE.Search"
+    (WidgetValue initialModel)
+    buildUI
+    (handleEvent showEditorEvent)
+    []
   initialModel = SearchModel
-    { _database = db
-    , _searchRange = SearchRange
+    { _smDatabase = db
+    , _smRange = SearchRange
         { _searchFrom = Left ""
         , _searchTo = Left "\\xFF"
         , _searchLimit = 100
         , _searchReverse = False
         }
-    , _searchResults = OperationNotStarted
+    , _smResults = OperationNotStarted
     }
 
 type LabelStyleSetter = forall s e. WidgetNode s e -> WidgetNode s e

@@ -1,11 +1,13 @@
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module FDBE.App
-  ( start,
+  ( start
   )
 where
 
@@ -23,7 +25,7 @@ import qualified FDBE.Component.KeyEditor as KeyEditor
 
 data AppModel = AppModel
   { _database :: Database
-  , _appAlert :: AppAlert 
+  , _appAlert :: AppAlert
   }
   deriving (Eq, Show)
 
@@ -33,7 +35,6 @@ data AppAlert
   | AlertKeyEditor KeyEditorModel
   deriving (Eq, Show)
 
--- todo: why do these have to be together? https://stackoverflow.com/questions/47742054/haskell-makelenses-data-constructor-not-in-scope
 makeLenses ''AppModel
 
 data AppEvent
@@ -48,23 +49,26 @@ buildUI _wenv model = widgetStack where
 
   widgetStack = zstack [
       vstack_ [sizeReqUpdaterFlexMax] [
+        search (model ^. database) ShowKeyEditorAlert,
         hgrid_ [childSpacing_ 2] [
-          button "Database Status" ShowStatusAlert,
-          button "Edit Value at Key" ShowEmptyKeyEditorAlert
-        ] `styleBasic` [padding 2],
-        search (model ^. database) ShowKeyEditorAlert
+          menuButton "Database Status" ShowStatusAlert,
+          menuButton "Edit Value at Key" ShowEmptyKeyEditorAlert
+        ] `styleBasic` [padding 2]
       ],
-     maybeAlert
-   ]
+      maybeAlert
+    ]
   
+  menuButton text event =
+    button text event `styleBasic` [border 0 def]
+
   -- todo: why do we get "("Failed match on Composite handleMessage",StatusEvent)" errors after changing from status to editor?
   maybeAlert = case model ^. appAlert of
     AlertNone ->
       spacer `nodeVisible` False
     AlertStatus ->
-      alert HideAlert (status (model ^. database))
+      alert_ HideAlert [titleCaption "Database Status"] (status (model ^. database)) 
     AlertKeyEditor keModel ->
-      alert HideAlert (KeyEditor.keyEditor keModel SetKeyEditorModel)
+      alert_ HideAlert [titleCaption "Edit Value at Key"] (KeyEditor.keyEditor keModel SetKeyEditorModel)
 
 handleEvent :: EventHandler AppModel AppEvent sp ep
 handleEvent _wenv _node model = \case

@@ -47,10 +47,10 @@ adwaitaTheme = compactTheme $ T.baseTheme lightThemeColors {
   }
   where
   text = rgbHex "#1c1c1c"
-  textDisabled = rgbHex "#96918c"--c7c8c6"
+  textDisabled = rgbHex "#96918c"
   inputBorder = rgbHex "#c9c6c2"
   btnBg = rgbHex "#fefefe"
-  btnBgDisabled = rgbHex "#eeeeed"--"#d8d8d8"
+  btnBgDisabled = rgbHex "#eeeeed"
   clear = rgbHex "#f2f1f0"
 
 compactTheme :: Theme -> Theme
@@ -80,6 +80,7 @@ compactTheme t = t
       & L.dialogFrameStyle          %~ fixDialogFrameStyle
       & L.dialogCloseIconStyle      %~ fixDialogCloseIconStyle
       & L.dialogButtonsStyle        %~ fixDialogButtonsStyle
+      & L.dialogTitleStyle          %~ fixDialogTitleStyle
       & L.checkboxWidth             .~ 14
 
     fixDisabledThemeState :: ThemeState -> ThemeState
@@ -117,3 +118,8 @@ compactTheme t = t
     fixDialogButtonsStyle :: StyleState -> StyleState
     fixDialogButtonsStyle ss = ss
       & L.padding ?~ padding 4
+    
+    fixDialogTitleStyle :: StyleState -> StyleState
+    fixDialogTitleStyle ss = ss
+      & L.text . non def . L.fontSize ?~ FontSize 14
+      & L.padding ?~ padding 4 <> paddingB 8

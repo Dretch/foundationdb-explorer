@@ -20,7 +20,7 @@ import qualified FoundationDB.Layer.Tuple as LT
 import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp), VersionstampCompleteness (Complete))
 
-data TupleEntryEvent = TupleValueChanged EditableBytes
+newtype TupleEntryEvent = TupleValueChanged EditableBytes
 
 tupleEntry
  :: (CompositeEvent ep, CompParentModel sp)

@@ -13,7 +13,7 @@ import FDBE.FoundationDB (getStatus)
 import Control.Lens
 import Monomer
 import FoundationDB (Database)
-import FDBE.Monomer (titleLabel, sizeReqUpdaterFlexMax)
+import FDBE.Monomer (sizeReqUpdaterFlexMax)
 
 data StatusModel = StatusModel
   { _database :: Database
@@ -29,12 +29,11 @@ data StatusEvent
 
 buildUI :: UIBuilder StatusModel StatusEvent
 buildUI _wenv model = tree where
-  tree = vstack_ [childSpacing, sizeReqUpdaterFlexMax] [
-      titleLabel "Database Status",
+  tree =
+    box_ [sizeReqUpdaterFlexMax] $
       scroll $
         label_ (model ^. statusText) [multiline]
           `styleBasic` [padding 4, textFont "Mono"]
-    ]
 
 handleEvent :: EventHandler StatusModel StatusEvent sp ep
 handleEvent _wenv _node model = \case

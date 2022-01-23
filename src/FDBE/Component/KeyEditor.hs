@@ -1,5 +1,7 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module FDBE.Component.KeyEditor
 ( KeyEditorModel(..)
@@ -17,19 +19,19 @@ import Control.Exception (displayException)
 import Data.Text (pack)
 import FoundationDB (Database)
 import FDBE.Component.TupleEntry (tupleEntryV)
-import FDBE.Monomer (titleLabel, sizeReqUpdaterFlexMax)
+import FDBE.Monomer (sizeReqUpdaterFlexMax)
 import Control.Monad (join)
+import qualified FDBE.Font as Font
 
--- todo: remove/shorten prefixes?
 data KeyEditorModel = KeyEditorModel
-  { _keyEditorKey      :: EditableBytes
-  , _keyEditorOldValue :: Operation (Maybe EditableBytes)
-  , _keyEditorNewValue :: Maybe EditableBytes
-  , _keyEditorSave     :: Operation ()
-  , _database          :: Database
+  { _keKey      :: EditableBytes
+  , _keOldValue :: Operation (Maybe EditableBytes)
+  , _keNewValue :: Maybe EditableBytes
+  , _keSave     :: Operation ()
+  , _keDatabase :: Database
   } deriving (Eq, Show)
 
-makeLenses ''KeyEditorModel
+makeLensesWith abbreviatedFields ''KeyEditorModel
 
 data KeyEditorEvent
   = UpdateKeyEditorKey EditableBytes
@@ -57,19 +59,28 @@ keyEditor model changeHandler =
   compositeV "FDBE.KeyEditor" model changeHandler buildUI handleEvent
 
 buildUI :: UIBuilder KeyEditorModel KeyEditorEvent
-buildUI _wenv model = stack where
-  stack =
-    vstack_ [childSpacing_ 10, sizeReqUpdaterFlexMax] [
-      titleBox "Key" [tupleEntryV (model ^. keyEditorKey) UpdateKeyEditorKey],
-      titleBox "Existing Value" (loadValueAtKeyButton : loadedBoxChildren),
-      titleBox "New Value" [copyExistingButton]
-    ]
-  
-  loadValueAtKeyButton =
-    button "Load value at key" LoadKeyEditorOldValue
-      `nodeEnabled` (model ^. keyEditorOldValue /= OperationInProgress)
+buildUI _wenv model =
+  box_ [sizeReqUpdaterFlexMax] $
+    scroll $
+      vstack_ [childSpacing_ 10] [
+        keyBox model,
+        oldValueBox model,
+        newValueBox model
+      ]
 
-  loadedBoxChildren = case model ^. keyEditorOldValue of
+keyBox :: KeyEditorModel -> WidgetNode KeyEditorModel KeyEditorEvent
+keyBox model =
+  titleBox "Key" [tupleEntryV (model ^. key) UpdateKeyEditorKey]
+
+oldValueBox :: KeyEditorModel -> WidgetNode KeyEditorModel KeyEditorEvent
+oldValueBox model = tree where
+  tree = titleBox "Existing Value" (loadValueButton : loadedChildren)
+    
+  loadValueButton =
+    button "Load value at key" LoadKeyEditorOldValue
+      `nodeEnabled` (model ^. oldValue /= OperationInProgress)
+
+  loadedChildren = case model ^. oldValue of
     OperationNotStarted -> []
     OperationInProgress -> []
     OperationSuccess maybeValue ->
@@ -77,19 +88,54 @@ buildUI _wenv model = stack where
           combo = existsCombo existsVal (const PointlessEvent)
           entry = case maybeValue of
             Nothing -> []
-            Just mv -> [tupleEntryV mv (UpdateKeyEditorNewValue . Just)]
+            Just eb -> [tupleEntryV eb (UpdateKeyEditorNewValue . Just)]
       in (`nodeEnabled` False) <$> combo : entry
     OperationFailure msg ->
       [label msg]
 
+newValueBox :: KeyEditorModel -> WidgetNode KeyEditorModel KeyEditorEvent
+newValueBox model = tree where
+  tree = titleBox "New Value"
+    ([copyExistingButton, newValueTypeCombo] <> newValueEntry <> [saveButton])
+
   copyExistingButton =
     button "Copy from existing value" UpdateKeyEditorNewValueCopyOld
-      `nodeEnabled` (isJust . operationSuccess $ model ^. keyEditorOldValue)
+      `nodeEnabled` (isJust . operationSuccess $ model ^. oldValue)
+  
+  newValueTypeCombo = combo where
+    combo = existsCombo existsVal (UpdateKeyEditorNewValue . onComboChange)
+    existsVal
+      | isJust (model ^. newValue) = ValueExists
+      | otherwise = ValueDoesntExist
+    onComboChange = \case
+      ValueExists -> Just (Left "")
+      ValueDoesntExist -> Nothing
+  
+  newValueEntry = case model ^. newValue of
+    Nothing -> []
+    Just eb -> [tupleEntryV eb (UpdateKeyEditorNewValue . Just)]
+  
+  saveButton =
+    hstack [
+      label saveResultLabel,
+      filler,
+      button "Save Value" KeyEditorSave
+        `nodeEnabled` (model ^. save /= OperationInProgress)
+    ]
+  
+  saveResultLabel = case model ^. save of
+    OperationNotStarted  -> ""
+    OperationInProgress  -> ""
+    OperationFailure msg -> msg
+    OperationSuccess ()  -> "Value saved successfully"
 
 titleBox :: Text -> [WidgetNode KeyEditorModel KeyEditorEvent] -> WidgetNode KeyEditorModel KeyEditorEvent
-titleBox title contents =
-  box (vstack_ [childSpacing_ 2, sizeReqUpdaterFlexMax] (titleLabel title : contents))
-  `styleBasic` [border 1 (rgbHex "#c9c6c2"), padding 4, radius 3]
+titleBox titleText contents = tree where
+  tree =
+    box_ [alignLeft] (vstack_ [childSpacing_ 2] (title : contents))
+      `styleBasic` [border 1 (rgbHex "#c9c6c2"), padding 4, radius 3]
+  title =
+    label titleText `styleBasic` [textFont Font.bold, paddingV 4]
 
 existsCombo
   :: ValueExistsOrNot
@@ -100,53 +146,53 @@ existsCombo val handleChange =
 
 handleEvent :: EventHandler KeyEditorModel KeyEditorEvent sp ep
 handleEvent _wenv _node model = \case
-  UpdateKeyEditorKey key ->
-    [Model (model & keyEditorKey .~ key & keyEditorOldValue .~ OperationNotStarted)]
+  UpdateKeyEditorKey newKey ->
+    [Model (model & key .~ newKey & oldValue .~ OperationNotStarted)]
   LoadKeyEditorOldValue ->
-    [Model (model & keyEditorOldValue .~ OperationInProgress)
+    [Model (model & oldValue .~ OperationInProgress)
     ,Task $ do
-      op <- getKeyValue (model ^. database) (model ^. keyEditorKey) >>= \case
+      op <- getKeyValue (model ^. database) (model ^. key) >>= \case
         Left e    -> pure . OperationFailure . pack $ displayException e
         Right val -> pure $ OperationSuccess val
       pure $ UpdateKeyEditorOldValue op
     ]
   UpdateKeyEditorOldValue val ->
-    [Model (model & keyEditorOldValue .~ val)]
+    [Model (model & oldValue .~ val)]
   UpdateKeyEditorNewValue val ->
-    [Model (model & keyEditorNewValue .~ val)]
+    [Model (model & newValue .~ val)]
   UpdateKeyEditorNewValueCopyOld ->
-    let opSucc = join (operationSuccess (model ^. keyEditorOldValue))
-     in [Model (model & keyEditorNewValue .~ opSucc)]
+    let opSucc = join (operationSuccess (model ^. oldValue))
+     in [Model (model & newValue .~ opSucc)]
   KeyEditorSave ->
-    [Model (model & keyEditorSave .~ OperationInProgress)
+    [Model (model & save .~ OperationInProgress)
     ,Task $ do
-      op <- setKeyValue (model ^. database) (model ^. keyEditorKey) (model ^. keyEditorNewValue) >>= \case
+      op <- setKeyValue (model ^. database) (model ^. key) (model ^. newValue) >>= \case
         Just e  -> pure . OperationFailure . pack $ displayException e
         Nothing -> pure $ OperationSuccess ()
       pure $ UpdateKeyEditorSave op
     ]
   UpdateKeyEditorSave val ->
-    [Model (model & keyEditorSave .~ val)]
+    [Model (model & save .~ val)]
   PointlessEvent -> -- todo: avoid somehow...
     []
 
 initialModel :: Database -> KeyEditorModel
 initialModel db = KeyEditorModel
-  { _keyEditorKey = Left ""
-  , _keyEditorOldValue = OperationNotStarted
-  , _keyEditorNewValue = Nothing
-  , _keyEditorSave = OperationNotStarted
-  , _database = db
+  { _keKey = Left ""
+  , _keOldValue = OperationNotStarted
+  , _keNewValue = Nothing
+  , _keSave = OperationNotStarted
+  , _keDatabase = db
   }
 
 initialModel_ :: Database -> ByteString -> ByteString -> KeyEditorModel
-initialModel_ db key value = KeyEditorModel
-  { _keyEditorKey = keyEb
-  , _keyEditorOldValue = OperationSuccess (Just valueEb)
-  , _keyEditorNewValue = Nothing
-  , _keyEditorSave = OperationNotStarted
-  , _database = db
+initialModel_ db initKey initValue = KeyEditorModel
+  { _keKey = keyEb
+  , _keOldValue = OperationSuccess (Just valueEb)
+  , _keNewValue = Just valueEb
+  , _keSave = OperationNotStarted
+  , _keDatabase = db
   }
   where
-    keyEb = decodeEditableBytes key
-    valueEb = decodeEditableBytes value
+    keyEb = decodeEditableBytes initKey
+    valueEb = decodeEditableBytes initValue
