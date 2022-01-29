@@ -12,6 +12,13 @@ packages:
   original:
     hackage: nanovg-0.8.0.0
 - completed:
+    hackage: monomer-1.3.0.0@sha256:82bb1ab764d0ff621073ddcea4d9b4fe56410977c819ffcec4a00d823817e1cb,16184
+    pantry-tree:
+      size: 13936
+      sha256: 6972485b1da425a7af7be4407217748fc83fbef272d9c7174ca65cd7faf201bb
+  original:
+    hackage: monomer-1.3.0.0
+- completed:
     name: foundationdb-haskell
     version: 0.1.0.0
     git: https://github.com/crclark/foundationdb-haskell
