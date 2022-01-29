@@ -54,7 +54,7 @@ buildUI _wenv model = widgetStack where
           menuButton "Database Status" ShowStatusAlert,
           menuButton "Edit Value at Key" ShowEmptyKeyEditorAlert
         ] `styleBasic` [padding 2]
-      ],
+      ] `nodeKey` "vstack", -- key needed to avoid recreating this vstack when opening the alert
       maybeAlert
     ]
   

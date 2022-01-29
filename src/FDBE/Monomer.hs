@@ -4,6 +4,7 @@ module FDBE.Monomer
 , sizeReqUpdaterFlexMax
 , adwaitaTheme
 , compactTheme
+, useOldCompositeModel
 ) where
 
 import FDBE.Prelude
@@ -123,3 +124,9 @@ compactTheme t = t
     fixDialogTitleStyle ss = ss
       & L.text . non def . L.fontSize ?~ FontSize 14
       & L.padding ?~ padding 4 <> paddingB 8
+    
+    -- todo: skinny cursor!
+
+useOldCompositeModel :: CompositeCfg s e sp ep
+useOldCompositeModel =
+  customModelBuilder $ \_parentModel oldModel _newModel -> oldModel

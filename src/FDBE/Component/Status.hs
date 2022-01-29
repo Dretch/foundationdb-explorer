@@ -13,7 +13,7 @@ import FDBE.FoundationDB (getStatus)
 import Control.Lens
 import Monomer
 import FoundationDB (Database)
-import FDBE.Monomer (sizeReqUpdaterFlexMax)
+import FDBE.Monomer (sizeReqUpdaterFlexMax, useOldCompositeModel)
 
 data StatusModel = StatusModel
   { _database :: Database
@@ -47,9 +47,9 @@ handleEvent _wenv _node model = \case
     [Model (model & statusText .~ s)]
 
 status :: (Typeable s, Typeable e) => Database -> WidgetNode s e
-status db = compositeD_ "FBBE.Status" (WidgetValue initialModel) buildUI handleEvent [onInit initialEvent] where
+status db = compositeD_ "FBBE.Status" (WidgetValue initialModel) buildUI handleEvent cfg where
   initialModel = StatusModel
     { _database = db
     , _statusText = "..."
     }
-  initialEvent = WaitThenLoadStatus 0
+  cfg = [onInit (WaitThenLoadStatus 0), useOldCompositeModel]

@@ -31,6 +31,7 @@ import FoundationDB.Layer.Tuple (Elem)
 import qualified FoundationDB.Layer.Tuple as LT
 import qualified Data.UUID as UUID
 import FoundationDB.Versionstamp (Versionstamp(CompleteVersionstamp, IncompleteVersionstamp), TransactionVersionstamp (TransactionVersionstamp))
+import FDBE.Monomer (useOldCompositeModel)
 
 data SearchModel = SearchModel
   { _smDatabase :: Database
@@ -54,6 +55,29 @@ data SearchEvent
   = StartSearch
   | FinishSearch (Either Text (NominalDiffTime, Seq SearchResult))
   | EditSearchResult ByteString ByteString
+
+search
+ :: (Typeable s, Typeable e)
+ => Database
+ -> ShowEditorEvent e
+ -> WidgetNode s e
+search db showEditorEvent = comp where
+  comp = compositeD_
+    "FBBE.Search"
+    (WidgetValue initialModel)
+    buildUI
+    (handleEvent showEditorEvent)
+    [useOldCompositeModel]
+  initialModel = SearchModel
+    { _smDatabase = db
+    , _smRange = SearchRange
+        { _searchFrom = Left ""
+        , _searchTo = Left "\\xFF"
+        , _searchLimit = 100
+        , _searchReverse = False
+        }
+    , _smResults = OperationNotStarted
+    }
 
 buildUI :: UIBuilder SearchModel SearchEvent
 buildUI _wenv model = searchGrid where
@@ -183,29 +207,6 @@ handleEvent showEditorEvent _wenv _node model = \case
     in [Model (model & results .~ searchResults')]
   EditSearchResult key value ->
     [Report (showEditorEvent key value)]
-
-search
- :: (Typeable s, Typeable e)
- => Database
- -> ShowEditorEvent e
- -> WidgetNode s e
-search db showEditorEvent = comp where
-  comp = compositeD_
-    "FBBE.Search"
-    (WidgetValue initialModel)
-    buildUI
-    (handleEvent showEditorEvent)
-    []
-  initialModel = SearchModel
-    { _smDatabase = db
-    , _smRange = SearchRange
-        { _searchFrom = Left ""
-        , _searchTo = Left "\\xFF"
-        , _searchLimit = 100
-        , _searchReverse = False
-        }
-    , _smResults = OperationNotStarted
-    }
 
 type LabelStyleSetter = forall s e. WidgetNode s e -> WidgetNode s e
 
