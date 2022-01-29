@@ -155,7 +155,6 @@ resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
 
     eqCell :: JGridCol s e
     eqCell =
-      -- todo: why does this sometimes not show up?(when using reverse search...)
       jcol $
         label "=" `styleBasic` [textFont Font.monoBold, padding 4]
 
@@ -226,7 +225,6 @@ elemToWidget labelSS tooltipPrefix =
       LT.IncompleteVS (IncompleteVersionstamp user) ->
         w (T.pack $ printf "user: %d" user) "incomplete versionstamp"
       LT.Tuple es ->
-        -- todo: why text not showing up!?
         hstack $ flip imap es $ \i e ->
           elemToWidget labelSS (tooltipPrefix <> tupleHelp i) e
             `styleBasic` [border 1 rowTupleBorder, paddingH 6, paddingV 2]
