@@ -105,7 +105,7 @@ jgrid = jgrid_ def
 
 -- todo: deal with invisible children!
 -- todo: do we need to care about child padding/border?
-jgrid_ :: forall s e. [JGridCfg] -> [JGridRow s e] -> WidgetNode s e
+jgrid_ :: [JGridCfg] -> [JGridRow s e] -> WidgetNode s e
 jgrid_ configs rows =
   defaultWidgetNode "FDBE.JGrid" container
     & L.children .~ S.fromList (jgrContents <$> mconcat (jgrCols <$> rows))
@@ -134,19 +134,16 @@ jgrid_ configs rows =
       style = currentStyle wenv node
       Rect l t w h = fromMaybe def (removeOuterBounds style viewport)
 
-      assignedAreas =
-        flip fmap modelSeq $ \childModel ->
-          let JGridModelWidget{jgmCol, jgmRow, jgmColSpan} = childModel
-              chX = l + S.index colXs jgmCol + spacing * fromIntegral jgmCol
-              chY = t + S.index colYs jgmRow + spacing * fromIntegral jgmRow
-              chW = S.index colXs (jgmCol + jgmColSpan) - S.index colXs jgmCol
-              chH = S.index colYs (jgmRow + 1) - S.index colYs jgmRow
-          in Rect chX chY chW chH
-
       (wReqs, hReqs) = toSizeReqs model children
-
       colXs = sizesToPositions (cellSize wReqs (w - spacingTotalW))
       colYs = sizesToPositions (cellSize hReqs (h - spacingTotalH))
+
+      assignedAreas = assignArea <$> modelSeq
+      assignArea JGridModelWidget{jgmCol, jgmRow, jgmColSpan} = Rect chX chY chW chH where
+        chX = l + S.index colXs jgmCol + spacing * fromIntegral jgmCol
+        chY = t + S.index colYs jgmRow + spacing * fromIntegral jgmRow
+        chW = S.index colXs (jgmCol + jgmColSpan) - S.index colXs jgmCol
+        chH = S.index colYs (jgmRow + 1) - S.index colYs jgmRow
 
 cellSize :: Seq SizeReq -> Double -> Seq Double
 cellSize reqs available = reqResult <$> reqs where
