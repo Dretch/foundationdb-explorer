@@ -27,15 +27,15 @@ tupleEntry
  => ALens' sp EditableBytes
  -> WidgetNode sp ep
 tupleEntry ls =
-  composite widgetType ls buildUI handleEvent
+  composite widgetType ls buildUI (handleEvent Nothing)
 
 tupleEntryV
  :: (CompositeEvent ep, CompParentModel sp)
  => EditableBytes
  -> (EditableBytes -> ep)
  -> WidgetNode sp ep
-tupleEntryV value handler =
-  compositeV widgetType value handler buildUI handleEvent
+tupleEntryV value changeHandler =
+  compositeD_ widgetType (WidgetValue value) buildUI (handleEvent (Just changeHandler)) []
 
 widgetType :: WidgetType
 widgetType = "FBDE.TupleEntry"
@@ -151,9 +151,11 @@ tupleEntry' elems elmsChange =
     addElemButton =
       button "Add Element" (elmsChange (elems `snoc` SingleLineText ""))
 
-handleEvent :: EventHandler EditableBytes TupleEntryEvent sp ep
-handleEvent _wenv _node _model (TupleValueChanged newValue) =
-  [Model newValue]
+handleEvent :: Maybe (EditableBytes -> ep) -> EventHandler EditableBytes TupleEntryEvent sp ep
+handleEvent changeHandler _wenv _node _model (TupleValueChanged newValue) =
+  [Model newValue] <> case changeHandler of
+    Just h -> [Report (h newValue)]
+    Nothing -> []
 
 data EditAs = EditAsRaw | EditAsTuple
   deriving (Eq, Enum)

@@ -86,7 +86,7 @@ buildUI _wenv model = searchGrid where
     jgrid_ [childSpacing_ 2] [
       jrow [
         jcol $ label "From",
-        jcol $ tupleEntry (range . searchFrom)
+        jcol $ tupleEntry (range . searchFrom) -- todo: allow selecting "Start"/"End" tuples?
       ],
       jrow [
         jcol $ label "To",

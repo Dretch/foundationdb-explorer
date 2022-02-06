@@ -34,7 +34,8 @@ data KeyEditorModel = KeyEditorModel
 makeLensesWith abbreviatedFields ''KeyEditorModel
 
 data KeyEditorEvent
-  = UpdateKeyEditorKey EditableBytes
+  = KeyEditorModelChanged KeyEditorModel
+  | UpdateKeyEditorKey EditableBytes
   | LoadKeyEditorOldValue
   | UpdateKeyEditorOldValue (Operation (Maybe EditableBytes))
   | UpdateKeyEditorNewValue (Maybe EditableBytes)
@@ -56,7 +57,7 @@ keyEditor
  -> (KeyEditorModel -> ep)
  -> WidgetNode sp ep
 keyEditor model changeHandler =
-  compositeV "FDBE.KeyEditor" model changeHandler buildUI handleEvent
+  compositeV "FDBE.KeyEditor" model KeyEditorModelChanged buildUI (handleEvent changeHandler)
 
 buildUI :: UIBuilder KeyEditorModel KeyEditorEvent
 buildUI _wenv model =
@@ -144,8 +145,10 @@ existsCombo
 existsCombo val handleChange =
   textDropdownSV val handleChange [ValueExists, ValueDoesntExist]
 
-handleEvent :: EventHandler KeyEditorModel KeyEditorEvent sp ep
-handleEvent _wenv _node model = \case
+handleEvent :: (KeyEditorModel -> ep) -> EventHandler KeyEditorModel KeyEditorEvent sp ep
+handleEvent changeHandler _wenv _node model = \case
+  KeyEditorModelChanged newModel ->
+    [Report (changeHandler newModel)]
   UpdateKeyEditorKey newKey ->
     [Model (model & key .~ newKey & oldValue .~ OperationNotStarted)]
   LoadKeyEditorOldValue ->

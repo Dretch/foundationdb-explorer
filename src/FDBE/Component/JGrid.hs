@@ -76,7 +76,6 @@ instance Semigroup JGridColCfg where
 instance Monoid JGridColCfg where
   mempty = def
 
--- todo: make class?
 colSpan :: Word -> JGridColCfg
 colSpan x = def { jgcColSpan = Just x }
 
