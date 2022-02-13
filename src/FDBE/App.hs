@@ -88,6 +88,7 @@ start db = startApp model handleEvent buildUI config
   where
     config =
       [ appWindowTitle "FoundationDB Explorer"
+      , appWindowIcon "./assets/icon.bmp"
       , appTheme adwaitaTheme
       ] <> Font.fontDefs
     model = AppModel

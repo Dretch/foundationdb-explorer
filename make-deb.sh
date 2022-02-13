@@ -12,7 +12,7 @@ mkdir -p "$DIR/usr/bin" "$DIR/usr/share/applications" "$DIR/usr/share/pixmaps"
 cd "$DIR"
 cp `stack path --local-install-root`/bin/foundationdb-explorer ./usr/bin
 cp ../foundationdb-explorer.desktop ./usr/share/applications
-cp ../icon.png ./usr/share/pixmaps/foundationdb-explorer.png
+cp ../icon.bmp ./usr/share/pixmaps/foundationdb-explorer.bmp
 
 # lovely hack to find out what debian packages our executable needs
 DEPENDS=$(dpkg --search `readelf -d ./usr/bin/foundationdb-explorer | egrep --only-matching '[^[]+\.so\.[^]]'` \
