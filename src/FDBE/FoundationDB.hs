@@ -1,48 +1,50 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module FDBE.FoundationDB
-  ( getClusterFilePath
-  , getStatus
-  , EditableBytes
-  , EditableElem(..)
-  , toEditableElem
-  , fromEditableElem
-  , elemText
-  , SearchRange(..)
-  , searchFrom
-  , searchTo
-  , searchLimit
-  , searchReverse
-  , SearchResult(..)
-  , resultKey
-  , resultValue
-  , getSearchResult
-  , getKeyValue
-  , setKeyValue
-  , encodeEditableBytes
-  , decodeEditableBytes
-  ) where
-
-import           FDBE.Prelude
+  ( getClusterFilePath,
+    getStatus,
+    EditableBytes,
+    EditableElem (..),
+    toEditableElem,
+    fromEditableElem,
+    elemText,
+    SearchRange (..),
+    searchFrom,
+    searchTo,
+    searchLimit,
+    searchReverse,
+    SearchResult (..),
+    resultKey,
+    resultValue,
+    getSearchResult,
+    getKeyValue,
+    setKeyValue,
+    encodeEditableBytes,
+    decodeEditableBytes,
+  )
+where
 
 import Control.Lens hiding (both)
-import qualified Data.Text                as T
-import           Data.Text.Encoding       (decodeUtf8)
-import           Data.Time.Clock          (NominalDiffTime)
-import qualified Data.Time.Clock          as Clock
-import           FoundationDB             (Database, Error, RangeQuery (..))
-import qualified FoundationDB             as FDB
-import           FoundationDB.Layer.Tuple (Elem, decodeTupleElems,
-                                           encodeTupleElems)
+import qualified Data.Text as T
+import Data.Text.Encoding (decodeUtf8)
+import Data.Time.Clock (NominalDiffTime)
+import qualified Data.Time.Clock as Clock
+import FDBE.Bytes (bytesToText, textToBytes)
+import FDBE.Prelude
+import FoundationDB (Database, Error, RangeQuery (..))
+import qualified FoundationDB as FDB
+import FoundationDB.Layer.Tuple
+  ( Elem,
+    decodeTupleElems,
+    encodeTupleElems,
+  )
 import qualified FoundationDB.Layer.Tuple as LT
 import qualified FoundationDB.Versionstamp as LV
-import qualified System.Process           as P
-
-import           FDBE.Bytes               (bytesToText, textToBytes)
+import qualified System.Process as P
 
 getClusterFilePath :: Database -> IO (Maybe Text)
 getClusterFilePath db =
@@ -78,7 +80,7 @@ data EditableElem
   | IncompleteVS (LV.Versionstamp 'LV.Incomplete)
   deriving (Eq, Generic, Show)
 
-toEditableElem:: Elem -> EditableElem
+toEditableElem :: Elem -> EditableElem
 toEditableElem = \case
   LT.None ->
     None
@@ -86,8 +88,9 @@ toEditableElem = \case
     Tuple (toEditableElem <$> elems)
   LT.Bytes bs ->
     Bytes bs
-  LT.Text t | T.any (\c -> c == '\n' || c == '\r') t ->
-    MultiLineText t
+  LT.Text t
+    | T.any (\c -> c == '\n' || c == '\r') t ->
+      MultiLineText t
   LT.Text t ->
     SingleLineText t
   LT.Int i ->
@@ -136,32 +139,30 @@ fromEditableElem = \case
 elemText :: EditableElem -> Maybe Text
 elemText = \case
   SingleLineText t -> Just t
-  MultiLineText t  -> Just t
-  _                -> Nothing
+  MultiLineText t -> Just t
+  _ -> Nothing
 
-data SearchRange =
-  SearchRange
-    { _searchFrom    :: EditableBytes
-    , _searchTo      :: EditableBytes
-    , _searchLimit   :: Word
-    , _searchReverse :: Bool
-    }
+data SearchRange = SearchRange
+  { _searchFrom :: EditableBytes,
+    _searchTo :: EditableBytes,
+    _searchLimit :: Word,
+    _searchReverse :: Bool
+  }
   deriving (Eq, Show)
 
-data SearchResult =
-  SearchResult
-    { _resultKey   :: (ByteString, Maybe [Elem])
-    , _resultValue :: (ByteString, Maybe [Elem])
-    }
+data SearchResult = SearchResult
+  { _resultKey :: (ByteString, Maybe [Elem]),
+    _resultValue :: (ByteString, Maybe [Elem])
+  }
   deriving (Eq, Show)
 
 makeLenses ''SearchRange
 makeLenses ''SearchResult
 
-getSearchResult
-  :: Database
-  -> SearchRange
-  -> IO (Either Error (NominalDiffTime, Seq SearchResult))
+getSearchResult ::
+  Database ->
+  SearchRange ->
+  IO (Either Error (NominalDiffTime, Seq SearchResult))
 getSearchResult db SearchRange {..} =
   try $ do
     startTime <- Clock.getCurrentTime
@@ -171,12 +172,13 @@ getSearchResult db SearchRange {..} =
     endTime <- Clock.getCurrentTime
     pure (Clock.diffUTCTime endTime startTime, uncurry SearchResult <$> decodedPairs)
   where
-    range = RangeQuery
-      { rangeBegin   = FDB.FirstGreaterOrEq $ encodeEditableBytes _searchFrom
-      , rangeEnd     = FDB.FirstGreaterOrEq $ encodeEditableBytes _searchTo
-      , rangeReverse = _searchReverse
-      , rangeLimit   = Just $ fromIntegral _searchLimit
-      }
+    range =
+      RangeQuery
+        { rangeBegin = FDB.FirstGreaterOrEq $ encodeEditableBytes _searchFrom,
+          rangeEnd = FDB.FirstGreaterOrEq $ encodeEditableBytes _searchTo,
+          rangeReverse = _searchReverse,
+          rangeLimit = Just $ fromIntegral _searchLimit
+        }
 
 encodeEditableBytes :: EditableBytes -> ByteString
 encodeEditableBytes = either textToBytes (encodeTupleElems . fmap fromEditableElem)
@@ -184,7 +186,7 @@ encodeEditableBytes = either textToBytes (encodeTupleElems . fmap fromEditableEl
 decodeEditableBytes :: ByteString -> EditableBytes
 decodeEditableBytes bs = case decode bs of
   (_, Just elems) -> Right (toEditableElem <$> elems)
-  (bs', Nothing)  -> Left (bytesToText bs')
+  (bs', Nothing) -> Left (bytesToText bs')
 
 decode :: ByteString -> (ByteString, Maybe [Elem])
 decode b = (b, hush (decodeTupleElems b))

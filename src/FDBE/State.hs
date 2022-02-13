@@ -1,11 +1,12 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DerivingStrategies         #-}
-{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE LambdaCase #-}
 
 module FDBE.State
-  ( Operation(..)
-  , operationSuccess
-  ) where
+  ( Operation (..),
+    operationSuccess,
+  )
+where
 
 import FDBE.Prelude
 
