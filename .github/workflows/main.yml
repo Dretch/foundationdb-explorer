@@ -29,3 +29,5 @@ jobs:
         path: .stack-work
     
     - run: stack test --docker
+
+    - uses: mrkkrp/ormolu-action@v5
