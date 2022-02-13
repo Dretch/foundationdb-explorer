@@ -175,7 +175,8 @@ resultRow keyWidth valueWidth bgCol SearchResult { _resultKey, _resultValue } =
     rawCell :: Word -> ByteString -> JGridCol s e
     rawCell width bytes =
       jcol_ [colSpan width] $
-        labelSS $ label (bytesToText bytes) -- todo: tooltip?
+        tooltip "Raw bytes (not a tuple)" $
+          labelSS $ label (bytesToText bytes)
 
     elemCell :: Text -> Elem -> JGridCol s e
     elemCell tooltipPrefix elm =
