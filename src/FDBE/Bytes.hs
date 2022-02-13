@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module FDBE.Bytes
   ( textToBytes
   , bytesToText
@@ -44,10 +45,18 @@ textToBytes key =
     regularChar = encodeUtf8 . T.singleton <$> M.anySingle
 
 bytesToText :: ByteString -> Text
-bytesToText = T.concat . fmap mapChar . B.unpack
+bytesToText = T.pack . encodeSpecials . B.unpack
   where
-    mapChar w =
-      let c = B.w2c w in
-      if Char.isAlphaNum c && Char.isAscii c
-        then T.singleton c
-        else T.pack $ printf "\\x%02x" w
+    encodeSpecials :: [Word8] -> [Char]
+    encodeSpecials = \case
+      [] -> []
+      (w : w' : ws) | slash w && (slash w' || not (visible w')) ->
+        '\\' : '\\' : encodeSpecials (w' : ws)
+      (w : ws) | visible w ->
+        B.w2c w : encodeSpecials ws
+      (w : ws) ->
+        printf "\\x%02x" w <> encodeSpecials ws
+    slash w =
+      B.w2c w == '\\'
+    visible w =
+      B.w2c w >= ' ' && B.w2c w <= '~'

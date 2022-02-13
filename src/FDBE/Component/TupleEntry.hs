@@ -94,7 +94,6 @@ tupleEntry' elems elmsChange =
         label ""
       
       bytesInput b =
-        -- todo: fix weirdness
         tooltip escapeSyntaxHelp $
           textFieldV (bytesToText b) (onElemChange . Bytes . textToBytes)
 
