@@ -171,16 +171,16 @@ cellSize reqs available = reqResult <$> reqs
 
     reqResult r
       | availableFlex > 0 && availableFlex >= totalFlex =
-        if availableExtra > 0 && totalWeightedExtra > 0
-          then
-            let extraProp = _szrExtra r * _szrFactor r / totalWeightedExtra
-             in _szrFixed r + _szrFlex r + availableExtra * extraProp
-          else _szrFixed r + _szrFlex r
+          if availableExtra > 0 && totalWeightedExtra > 0
+            then
+              let extraProp = _szrExtra r * _szrFactor r / totalWeightedExtra
+               in _szrFixed r + _szrFlex r + availableExtra * extraProp
+            else _szrFixed r + _szrFlex r
       | totalWeightedFlex > 0 =
-        let flexProp = _szrFlex r * _szrFactor r / totalWeightedFlex
-         in _szrFixed r + availableFlex * flexProp
+          let flexProp = _szrFlex r * _szrFactor r / totalWeightedFlex
+           in _szrFixed r + availableFlex * flexProp
       | otherwise =
-        _szrFixed r
+          _szrFixed r
 
 sizesToPositions :: Seq Double -> Seq Double
 sizesToPositions = S.scanl (+) 0

@@ -55,10 +55,10 @@ bytesToText = T.pack . encodeSpecials . B.unpack
       [] -> []
       (w : w' : ws)
         | slash w && (slash w' || not (visible w')) ->
-          '\\' : '\\' : encodeSpecials (w' : ws)
+            '\\' : '\\' : encodeSpecials (w' : ws)
       (w : ws)
         | visible w ->
-          B.w2c w : encodeSpecials ws
+            B.w2c w : encodeSpecials ws
       (w : ws) ->
         printf "\\x%02x" w <> encodeSpecials ws
     slash w =

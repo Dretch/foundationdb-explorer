@@ -168,16 +168,16 @@ resultRow keyWidth valueWidth bgCol SearchResult {_resultKey, _resultValue} =
     keyCells :: [JGridCol s e]
     keyCells
       | (t, Nothing) <- _resultKey =
-        [rawCell keyWidth t]
+          [rawCell keyWidth t]
       | (_, Just ts) <- _resultKey =
-        imap (elemCell . tupleHelp) ts <> spacerCells (fromIntegral keyWidth - length ts)
+          imap (elemCell . tupleHelp) ts <> spacerCells (fromIntegral keyWidth - length ts)
 
     valueCells :: [JGridCol s e]
     valueCells
       | (t, Nothing) <- _resultValue =
-        [rawCell valueWidth t]
+          [rawCell valueWidth t]
       | (_, Just ts) <- _resultValue =
-        imap (elemCell . tupleHelp) ts
+          imap (elemCell . tupleHelp) ts
 
     rawCell :: Word -> ByteString -> JGridCol s e
     rawCell width bytes =

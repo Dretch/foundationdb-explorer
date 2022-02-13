@@ -239,12 +239,12 @@ setElemType elm = \case
       _ -> Bytes ""
   SingleLineText'
     | Just t <- elemText elm ->
-      SingleLineText t
+        SingleLineText t
   SingleLineText' ->
     SingleLineText ""
   MultiLineText'
     | Just t <- elemText elm ->
-      MultiLineText t
+        MultiLineText t
   MultiLineText' ->
     MultiLineText ""
   Int' ->
