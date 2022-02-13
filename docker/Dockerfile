@@ -1,5 +1,5 @@
-FROM fpco/stack-build:lts-14.27
+FROM fpco/stack-build:lts-18.19
 
 RUN \
-  wget https://www.foundationdb.org/downloads/6.2.15/ubuntu/installers/foundationdb-clients_6.2.15-1_amd64.deb && \
-  dpkg -i foundationdb-clients_6.2.15-1_amd64.deb
+  wget https://github.com/apple/foundationdb/releases/download/6.3.23/foundationdb-clients_6.3.23-1_amd64.deb && \
+  dpkg -i foundationdb-clients_*_amd64.deb
