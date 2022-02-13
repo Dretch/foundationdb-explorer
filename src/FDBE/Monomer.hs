@@ -128,7 +128,7 @@ compactTheme t =
     fixDialogCloseIconStyle ss =
       ss
         & L.radius ?~ radius 3
-        & L.padding ?~ padding 2ext install sjurmillidahl.ormolu-vscode
+        & L.padding ?~ padding 2
 
     fixDialogButtonsStyle :: StyleState -> StyleState
     fixDialogButtonsStyle ss =
