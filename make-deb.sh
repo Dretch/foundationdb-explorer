@@ -12,7 +12,7 @@ mkdir -p "$DIR/usr/bin" "$DIR/usr/share/applications" "$DIR/usr/share/pixmaps" "
 cd "$DIR"
 cp `stack path --local-install-root`/bin/foundationdb-explorer ./usr/share/foundationdb-explorer/
 cp ../foundationdb-explorer.desktop ./usr/share/applications
-cp ../assets/icon.bmp ./usr/share/pixmaps/foundationdb-explorer.bmp
+cp ../assets/icon.png ./usr/share/pixmaps/foundationdb-explorer.png
 cp -r ../assets ./usr/share/foundationdb-explorer
 
 # change working directory when running so that assets can be found
