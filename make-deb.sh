@@ -8,7 +8,7 @@ TAG=${TAG#"v"} # remove "v" prefix
 
 stack build
 rm -rf "$DIR"
-mkdir -p "$DIR/usr/bin" "$DIR/usr/share/applications" "$DIR/usr/share/pixmaps" "$DIR/usr/share/foundationdb-explorer" # todo: delete unused fonts!
+mkdir -p "$DIR/usr/bin" "$DIR/usr/share/applications" "$DIR/usr/share/pixmaps" "$DIR/usr/share/foundationdb-explorer"
 cd "$DIR"
 cp `stack path --local-install-root`/bin/foundationdb-explorer ./usr/share/foundationdb-explorer/
 cp ../foundationdb-explorer.desktop ./usr/share/applications
