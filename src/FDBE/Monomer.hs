@@ -77,6 +77,7 @@ compactTheme t =
       ts
         & L.labelStyle %~ fixStyleState
         & L.textFieldStyle %~ fixStyleState . fixTextInput
+        & L.textAreaStyle %~ fixStyleState . fixTextInput
         & L.btnStyle %~ fixStyleState . fixBtnStyle
         & L.btnMainStyle %~ fixStyleState . fixBtnStyle
         & L.dropdownStyle %~ fixStyleState . fixTextInput
