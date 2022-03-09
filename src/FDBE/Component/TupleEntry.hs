@@ -7,6 +7,7 @@
 module FDBE.Component.TupleEntry
   ( tupleEntry,
     tupleEntryV,
+    tupleEntryV_,
   )
 where
 
@@ -28,7 +29,7 @@ tupleEntry ::
   ALens' sp EditableBytes ->
   WidgetNode sp ep
 tupleEntry ls =
-  composite widgetType ls buildUI (handleEvent Nothing)
+  composite widgetType ls (buildUI False) (handleEvent Nothing)
 
 tupleEntryV ::
   (CompositeEvent ep, CompParentModel sp) =>
@@ -36,35 +37,48 @@ tupleEntryV ::
   (EditableBytes -> ep) ->
   WidgetNode sp ep
 tupleEntryV value changeHandler =
-  compositeD_ widgetType (WidgetValue value) buildUI (handleEvent (Just changeHandler)) []
+  tupleEntryV_ value changeHandler False
+
+tupleEntryV_ ::
+  (CompositeEvent ep, CompParentModel sp) =>
+  EditableBytes ->
+  (EditableBytes -> ep) ->
+  Bool ->
+  WidgetNode sp ep
+tupleEntryV_ value changeHandler readonly =
+  compositeD_ widgetType (WidgetValue value) (buildUI readonly) (handleEvent (Just changeHandler)) []
+
 
 widgetType :: WidgetType
 widgetType = "FBDE.TupleEntry"
 
-buildUI :: UIBuilder EditableBytes TupleEntryEvent
-buildUI _wenv model = tree
+buildUI :: Bool -> UIBuilder EditableBytes TupleEntryEvent
+buildUI readonly _wenv model = tree
   where
     tree =
       hstack_
         [childSpacing_ 2]
         [ textDropdownSV (getEditAs model) (TupleValueChanged . setEditAs model) [EditAsRaw, EditAsTuple]
-            `styleBasic` [sizeReqW (fixedSize 60)],
+            `styleBasic` [sizeReqW (fixedSize 60)]
+            `nodeEnabled` not readonly,
           editor
         ]
 
     editor = case model of
       Left t ->
-        tooltip escapeSyntaxHelp (textFieldV t (TupleValueChanged . Left))
+        tooltip escapeSyntaxHelp $
+          textFieldV_ t (TupleValueChanged . Left) [readOnly_ readonly]
       Right elems ->
-        tupleEntry' elems (TupleValueChanged . Right)
+        tupleEntry' elems (TupleValueChanged . Right) readonly
 
 tupleEntry' ::
   forall s e.
   (WidgetModel s, WidgetEvent e) =>
   [EditableElem] ->
   ([EditableElem] -> e) ->
+  Bool ->
   WidgetNode s e
-tupleEntry' elems elmsChange =
+tupleEntry' elems elmsChange readonly =
   vstack_ [childSpacing_ 2] $
     imap elemEntry elems <> [addElemButton]
   where
@@ -82,6 +96,7 @@ tupleEntry' elems elmsChange =
         elemTypeCombo =
           textDropdownSV (getElemType elm) (\et -> elmsChange (setAt i (setElemType elm et) elems)) (enumFrom None')
             `styleBasic` [sizeReqW (fixedSize 100)]
+            `nodeEnabled` not readonly
 
         elemInput = case elm of
           None -> noneInput
@@ -102,30 +117,31 @@ tupleEntry' elems elmsChange =
 
         bytesInput b =
           tooltip escapeSyntaxHelp $
-            textFieldV (bytesToText b) (onElemChange . Bytes . textToBytes)
+            textFieldV_ (bytesToText b) (onElemChange . Bytes . textToBytes) [readOnlyCfg]
 
         singleLineTextInput t =
-          textFieldV t (onElemChange . SingleLineText)
+          textFieldV_ t (onElemChange . SingleLineText) [readOnlyCfg]
 
         multiLineTextInput t =
-          textAreaV t (onElemChange . MultiLineText)
+          textAreaV_ t (onElemChange . MultiLineText) [readOnlyCfg]
 
         intInput x =
-          numericFieldV_ x (onElemChange . Int) [wheelRate 10]
+          numericFieldV_ x (onElemChange . Int) numericFieldCfg
 
         floatInput f =
-          numericFieldV_ f (onElemChange . Float) [wheelRate 10]
+          numericFieldV_ f (onElemChange . Float) numericFieldCfg
 
         doubleInput d =
-          numericFieldV_ d (onElemChange . Double) [wheelRate 10]
+          numericFieldV_ d (onElemChange . Double) numericFieldCfg
 
         boolInput b =
           textDropdownSV b (onElemChange . Bool) [False, True]
+            `nodeEnabled` not readonly
 
         -- todo: make less weird!
         uuidInput a b c d =
           -- maxlength, replacemode? validity check?
-          textFieldD_ (WidgetValue (UUID.toText uuid)) [maxLength 36, onChange onChangeEvt]
+          textFieldD_ (WidgetValue (UUID.toText uuid)) [maxLength 36, onChange onChangeEvt, readOnlyCfg]
           where
             uuid = UUID.fromWords a b c d
             onChangeEvt t =
@@ -139,24 +155,34 @@ tupleEntry' elems elmsChange =
           hstack_
             [childSpacing_ 2]
             [ label "Tx:",
-              numericFieldV_ tx (onElemChange . CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch) [wheelRate 10],
+              numericFieldV_ tx (onElemChange . CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch) numericFieldCfg,
               label "Batch:",
-              numericFieldV_ batch (onElemChange . CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx) [wheelRate 10],
+              numericFieldV_ batch (onElemChange . CompleteVS . flip CompleteVersionstamp usr . TransactionVersionstamp tx) numericFieldCfg,
               label "User:",
-              numericFieldV_ usr (onElemChange . CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch)) [wheelRate 10]
+              numericFieldV_ usr (onElemChange . CompleteVS . CompleteVersionstamp (TransactionVersionstamp tx batch)) numericFieldCfg
             ]
 
+        readOnlyCfg :: CmbReadOnly t => t
+        readOnlyCfg =
+          readOnly_ readonly
+        
+        numericFieldCfg :: (CmbReadOnly t, Num n, CmbWheelRate t n) => [t]
+        numericFieldCfg =
+          [readOnlyCfg, wheelRate 10]
+        
         tupleInput t =
-          tupleEntry' t (onElemChange . Tuple)
+          tupleEntry' t (onElemChange . Tuple) readonly
 
         onElemChange newVal =
           elmsChange (setAt i newVal elems)
 
         removeElemButton =
           button "Remove" (elmsChange (deleteAt i elems))
+            `nodeVisible` not readonly
 
     addElemButton =
       button "Add Element" (elmsChange (elems `snoc` SingleLineText ""))
+        `nodeVisible` not readonly
 
 handleEvent :: Maybe (EditableBytes -> ep) -> EventHandler EditableBytes TupleEntryEvent sp ep
 handleEvent changeHandler _wenv _node _model (TupleValueChanged newValue) =

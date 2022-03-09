@@ -15,7 +15,7 @@ import Control.Exception (displayException)
 import Control.Lens hiding (op)
 import Control.Monad (join)
 import Data.Text (pack)
-import FDBE.Component.TupleEntry (tupleEntryV)
+import FDBE.Component.TupleEntry (tupleEntryV, tupleEntryV_)
 import qualified FDBE.Font as Font
 import FDBE.FoundationDB (EditableBytes, decodeEditableBytes, getKeyValue, setKeyValue)
 import FDBE.Monomer (sizeReqUpdaterFlexMax)
@@ -93,8 +93,8 @@ oldValueBox model = tree
             combo = existsCombo existsVal (const PointlessEvent)
             entry = case maybeValue of
               Nothing -> []
-              Just eb -> [tupleEntryV eb (UpdateKeyEditorNewValue . Just)]
-         in (`nodeEnabled` False) <$> combo : entry
+              Just eb -> [tupleEntryV_ eb (UpdateKeyEditorNewValue . Just) True]
+         in (combo `nodeEnabled` False) : entry
       OperationFailure msg ->
         [label msg]
 
@@ -128,7 +128,7 @@ newValueBox model = tree
       hstack
         [ label saveResultLabel,
           filler,
-          button "Save Value" KeyEditorSave
+          button "Save" KeyEditorSave
             `nodeEnabled` (model ^. save /= OperationInProgress)
         ]
 
@@ -136,7 +136,7 @@ newValueBox model = tree
       OperationNotStarted -> ""
       OperationInProgress -> ""
       OperationFailure msg -> msg
-      OperationSuccess () -> "Value saved successfully"
+      OperationSuccess () -> "Saved successfully"
 
 titleBox :: Text -> [WidgetNode KeyEditorModel KeyEditorEvent] -> WidgetNode KeyEditorModel KeyEditorEvent
 titleBox titleText contents = tree
