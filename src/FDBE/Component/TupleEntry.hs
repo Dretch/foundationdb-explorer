@@ -48,7 +48,6 @@ tupleEntryV_ ::
 tupleEntryV_ value changeHandler readonly =
   compositeD_ widgetType (WidgetValue value) (buildUI readonly) (handleEvent (Just changeHandler)) []
 
-
 widgetType :: WidgetType
 widgetType = "FBDE.TupleEntry"
 
@@ -165,11 +164,11 @@ tupleEntry' elems elmsChange readonly =
         readOnlyCfg :: CmbReadOnly t => t
         readOnlyCfg =
           readOnly_ readonly
-        
+
         numericFieldCfg :: (CmbReadOnly t, Num n, CmbWheelRate t n) => [t]
         numericFieldCfg =
           [readOnlyCfg, wheelRate 10]
-        
+
         tupleInput t =
           tupleEntry' t (onElemChange . Tuple) readonly
 
