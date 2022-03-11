@@ -41,6 +41,11 @@ jobs:
     - run: stack test --docker
 
     - run: |
-        sudo apt -y install ruby ruby-dev rubygems build-essential
-        gem install fpm
+        sudo apt-get --assume-yes install ruby ruby-dev rubygems build-essential
+        sudo gem install fpm
         ./make-deb.sh
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ubuntu-package
+        path: .make-deb/foundationdb-explorer_*.deb
