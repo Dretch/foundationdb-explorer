@@ -4,7 +4,7 @@
 
 This is a very basic visual data viewer / editor / GUI for [FoundationDB](https://www.foundationdb.org/) databases.
 
-Built using (currently a slightly hacked version of) the awesome [gi-gtk-declarative](https://github.com/owickstrom/gi-gtk-declarative/) library.
+Built with the awesome [Monomer](https://github.com/fjvallarino/monomer) library for the GUI.
 
 ## Features
 
@@ -30,4 +30,4 @@ Those with Ubuntu-based systems can try the `.deb` package from the [Github rele
 
 ## Building
 
-Install the [Stack](https://docs.haskellstack.org/en/stable/README/) build system, clone the Git repo and then do: `stack test && stack install`
+Install the [Haskell Stack](https://docs.haskellstack.org/en/stable/README/) build system, clone the Git repo and then do: `stack --test install`
