@@ -20,7 +20,7 @@ import Control.Applicative ((<|>))
 import Control.Lens ((%~), (&), (.~))
 import Data.Foldable (foldl')
 import Data.List.Index (imap)
-import Data.Sequence ((|>))
+import Data.Sequence (Seq ((:|>)), (|>))
 import qualified Data.Sequence as S
 import FDBE.Prelude hiding (or, span)
 import Monomer
@@ -85,9 +85,7 @@ instance Monoid JGridColCfg where
 colSpan :: Word -> JGridColCfg
 colSpan x = def {jgcColSpan = Just x}
 
-newtype JGridModel = JGridModel (Seq JGridModelWidget) -- use Seq to match Monomer APIs
-
-data JGridModelWidget = JGridModelWidget
+data JGridPosition = JGridPosition
   { jgmCol :: Int,
     jgmRow :: Int,
     jgmColSpan :: Int
@@ -120,7 +118,7 @@ jgrid_ configs unfilteredRows =
   where
     container =
       createContainer
-        model
+        ()
         def
           { containerGetSizeReq = getSizeReq,
             containerResize = resize
@@ -128,8 +126,7 @@ jgrid_ configs unfilteredRows =
 
     config = mconcat configs
     rows = filter (not . null . jgrCols) unfilteredRows
-    model = rowsToModel rows
-    JGridModel modelSeq = model
+    gridPositions = rowsToGridPositions rows
     nRows = length rows
     nCols = fromMaybe 0 $ maximumMay (length . jgrCols <$> rows)
 
@@ -139,7 +136,7 @@ jgrid_ configs unfilteredRows =
 
     getSizeReq _wenv _node children = (w, h)
       where
-        (wReqs, hReqs) = toSizeReqs model children
+        (wReqs, hReqs) = toSizeReqs gridPositions children
         w = foldl' sizeReqMergeSum (fixedSize 0) wReqs & L.fixed %~ (+ spacingTotalW)
         h = foldl' sizeReqMergeSum (fixedSize 0) hReqs & L.fixed %~ (+ spacingTotalH)
 
@@ -148,12 +145,12 @@ jgrid_ configs unfilteredRows =
         style = currentStyle wenv node
         Rect l t w h = fromMaybe def (removeOuterBounds style viewport)
 
-        (wReqs, hReqs) = toSizeReqs model children
+        (wReqs, hReqs) = toSizeReqs gridPositions children
         colXs = sizesToPositions (cellSize wReqs (w - spacingTotalW))
         rowYs = sizesToPositions (cellSize hReqs (h - spacingTotalH))
 
-        assignedAreas = assignArea <$> modelSeq
-        assignArea JGridModelWidget {jgmCol, jgmRow, jgmColSpan} = Rect chX chY chW chH
+        assignedAreas = assignArea <$> gridPositions
+        assignArea JGridPosition {jgmCol, jgmRow, jgmColSpan} = Rect chX chY chW chH
           where
             chX = l + S.index colXs jgmCol + spacing * fromIntegral jgmCol
             chY = t + S.index rowYs jgmRow + spacing * fromIntegral jgmRow
@@ -187,21 +184,21 @@ cellSize reqs available = reqResult <$> reqs
 sizesToPositions :: Seq Double -> Seq Double
 sizesToPositions = S.scanl (+) 0
 
-rowsToModel :: [JGridRow s e] -> JGridModel
-rowsToModel rows = JGridModel (S.fromList $ mconcat (imap mapRow rows))
+rowsToGridPositions :: [JGridRow s e] -> Seq JGridPosition
+rowsToGridPositions rows = mconcat (imap mapRow rows)
   where
     mapRow y (JGridRow row) =
       snd $ foldl' (foldCol y) (0, mempty) row
     foldCol y (w, cols) (JGridCol _wgt cfg) =
       let cSpan = fromIntegral $ fromMaybe 1 (jgcColSpan cfg)
-       in (w + cSpan, cols `snoc` JGridModelWidget w y cSpan)
+       in (w + cSpan, cols :|> JGridPosition w y cSpan)
 
 toSizeReqs ::
-  JGridModel ->
+  Seq JGridPosition ->
   -- | The requested sizes for each column and each row
   Seq (WidgetNode s e) ->
   (Seq SizeReq, Seq SizeReq)
-toSizeReqs (JGridModel modelWidgets) widgets =
+toSizeReqs modelWidgets widgets =
   (toSizeReqs' (sortOnSpan widgetWidths), toSizeReqs' widgetHeights)
   where
     widgetWidths =
