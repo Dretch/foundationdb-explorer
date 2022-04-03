@@ -1,4 +1,4 @@
-module BytesSpec (spec) where
+module FDBE.BytesSpec (spec) where
 
 import qualified Data.ByteString as B
 import Data.Text (Text)

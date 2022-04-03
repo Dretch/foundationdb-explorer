@@ -57,6 +57,8 @@ tests:
     default-extensions:
       - OverloadedStrings
     dependencies:
+    - data-default
     - foundationdb-explorer
     - QuickCheck
     - quickcheck-instances
+    - stm

@@ -113,7 +113,7 @@ jgrid = jgrid_ def
 -- todo: deal with invisible children!
 -- todo: do we need to care about child padding/border?
 jgrid_ :: [JGridCfg] -> [JGridRow s e] -> WidgetNode s e
-jgrid_ configs rows =
+jgrid_ configs unfilteredRows =
   defaultWidgetNode "FDBE.JGrid" container
     & L.children .~ S.fromList (jgrContents <$> mconcat (jgrCols <$> rows))
   where
@@ -126,6 +126,7 @@ jgrid_ configs rows =
           }
 
     config = mconcat configs
+    rows = filter (not . null . jgrCols) unfilteredRows
     model = rowsToModel rows
     JGridModel modelSeq = model
     nRows = length rows
@@ -170,7 +171,7 @@ cellSize reqs available = reqResult <$> reqs
     availableExtra = available - totalFixed - availableFlex
 
     reqResult r
-      | availableFlex > 0 && availableFlex >= totalFlex =
+      | availableFlex >= totalFlex =
           if availableExtra > 0 && totalWeightedExtra > 0
             then
               let extraProp = _szrExtra r * _szrFactor r / totalWeightedExtra
