@@ -6,7 +6,7 @@ import FDBE.Component.JGrid
 import Monomer
 import qualified Monomer.Lens as L
 import Monomer.TestUtil
-import Test.Hspec (Spec, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 spec :: Spec
 spec = do
@@ -14,7 +14,7 @@ spec = do
   resize
 
 getSizeReq :: Spec
-getSizeReq = do
+getSizeReq = describe "getSizeReq" $ do
   it "grid with no children should be empty" $ do
     size [] `shouldBe` (fixedSize 0, fixedSize 0)
 
@@ -85,7 +85,7 @@ getSizeReq = do
       `shouldBe` (fixedSize 1, fixedSize 5)
 
 resize :: Spec
-resize = do
+resize = describe "resize" $ do
   it "single child should receive all available space" $ do
     childViewports
       [ jrow [jcol $ sizedBox (SizeReq 1 100 0 1) (SizeReq 1 100 0 1)]
@@ -129,10 +129,10 @@ resize = do
           ]
       ]
       `shouldBe` [ Rect 0 0 1 1,
-                   Rect 1 0 99 1,
-                   Rect 0 1 1 1,
-                   Rect 1 1 99 1
-                 ]
+                  Rect 1 0 99 1,
+                  Rect 0 1 1 1,
+                  Rect 1 1 99 1
+                ]
 
   it "expanding height in a row should affect all widgets in the row" $ do
     childViewports
@@ -146,10 +146,10 @@ resize = do
           ]
       ]
       `shouldBe` [ Rect 0 0 1 1,
-                   Rect 1 0 1 1,
-                   Rect 0 1 1 99,
-                   Rect 1 1 1 99
-                 ]
+                  Rect 1 0 1 1,
+                  Rect 0 1 1 99,
+                  Rect 1 1 1 99
+                ]
 
   it "children should be separated by childSpacing" $ do
     childViewports_
@@ -164,10 +164,10 @@ resize = do
           ]
       ]
       `shouldBe` [ Rect 0 0 49 49,
-                   Rect 51 0 49 49,
-                   Rect 0 51 49 49,
-                   Rect 51 51 49 49
-                 ]
+                  Rect 51 0 49 49,
+                  Rect 0 51 49 49,
+                  Rect 51 51 49 49
+                ]
 
   it "column with span=2 should expand across 2 columns" $ do
     childViewports
@@ -180,9 +180,9 @@ resize = do
           ]
       ]
       `shouldBe` [ Rect 0 0 50 50,
-                   Rect 50 0 50 50,
-                   Rect 0 50 100 50
-                 ]
+                  Rect 50 0 50 50,
+                  Rect 0 50 100 50
+                ]
 
 windowSize :: Size
 windowSize = Size 100 100
