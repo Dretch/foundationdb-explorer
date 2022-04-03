@@ -150,15 +150,15 @@ jgrid_ configs unfilteredRows =
 
         (wReqs, hReqs) = toSizeReqs model children
         colXs = sizesToPositions (cellSize wReqs (w - spacingTotalW))
-        colYs = sizesToPositions (cellSize hReqs (h - spacingTotalH))
+        rowYs = sizesToPositions (cellSize hReqs (h - spacingTotalH))
 
         assignedAreas = assignArea <$> modelSeq
         assignArea JGridModelWidget {jgmCol, jgmRow, jgmColSpan} = Rect chX chY chW chH
           where
             chX = l + S.index colXs jgmCol + spacing * fromIntegral jgmCol
-            chY = t + S.index colYs jgmRow + spacing * fromIntegral jgmRow
+            chY = t + S.index rowYs jgmRow + spacing * fromIntegral jgmRow
             chW = S.index colXs (jgmCol + jgmColSpan) - S.index colXs jgmCol
-            chH = S.index colYs (jgmRow + 1) - S.index colYs jgmRow
+            chH = S.index rowYs (jgmRow + 1) - S.index rowYs jgmRow
 
 cellSize :: Seq SizeReq -> Double -> Seq Double
 cellSize reqs available = reqResult <$> reqs
