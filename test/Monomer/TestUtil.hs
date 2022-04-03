@@ -1,3 +1,4 @@
+{- ORMOLU_DISABLE -}
 {-|
 Everything below this line in this file was taken verbatim from the Monomer source code, commit e49a79357653f171efe4a2e93a273ac9504d029f.
 
