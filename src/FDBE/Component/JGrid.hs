@@ -97,6 +97,7 @@ data JGridModelWidget = JGridModelWidget
 jrow :: [JGridCol s e] -> JGridRow s e
 jrow = JGridRow
 
+-- todo: rename to jcell? (since it represents a single cell, not an entire column)
 jcol :: WidgetNode s e -> JGridCol s e
 jcol = jcol_ []
 
