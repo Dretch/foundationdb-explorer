@@ -20,7 +20,7 @@ import Control.Applicative ((<|>))
 import Control.Lens ((%~), (&), (.~))
 import Data.Foldable (foldl')
 import Data.List.Index (imap)
-import Data.Sequence (Seq ((:|>)), (|>))
+import Data.Sequence (Seq ((:|>)))
 import qualified Data.Sequence as S
 import FDBE.Prelude hiding (or, span)
 import Monomer
@@ -210,47 +210,26 @@ toSizeReqs modelWidgets widgets =
     sortOnSpan =
       S.sortOn (\(_, _, span) -> span)
 
--- todo: make less hacky/more efficient
-toSizeReqs' ::
-  -- | The requested size of each widget, along with its (col/row) position and (col/row) span, sorted by span asc
-  Seq (SizeReq, Int, Int) ->
-  -- | The computed size requests for each col/row
-  Seq SizeReq
-toSizeReqs' = foldl' mergeWidget mempty
+    toSizeReqs' =
+      foldl' mergeWidgetSizeReq mempty
+
+mergeWidgetSizeReq :: Seq SizeReq -> (SizeReq, Int, Int) -> Seq SizeReq
+mergeWidgetSizeReq reqs (req, start, span) =
+  if missingReqs == 0
+    then -- all cells are occupied so merge any additional space into the right-most cell
+      S.adjust (sizeReqMergeSum remainingReq) (start + span - 1) reqs
+    else -- some cells are unoccupied, so split any additional space evenly between them
+      reqs <> S.replicate missingReqs splitRemainingReq
   where
-    mergeWidget :: Seq SizeReq -> (SizeReq, Int, Int) -> Seq SizeReq
-    mergeWidget reqs (req, start, span) =
-      case (occupiedReqs, unoccuppiedReqs) of
-        ([], []) ->
-          error $ "This is a bug! Maybe span is 0: " <> show span
-        ([], ur) ->
-          -- all spaces are unoccupied: split the widget equally across all spaces
-          let splitReq = multSizeReq req (1 / fromIntegral span)
-           in foldl'
-                (\reqs' ur' -> mergeAt reqs' ur' splitReq)
-                reqs
-                ur
-        (or, []) ->
-          -- all spaces are occupied: distrbute the fixed+flex+extra size from the left,
-          -- and dump any remaining in the right-most space (mostly ignore factor for now)
-          let cutReq =
-                foldl'
-                  (\req' (_p, or') -> req' `minusSizeReq` or')
-                  req
-                  or
-           in S.adjust (sizeReqMergeSum cutReq) (fst (last or)) reqs
-        (_or, _ur) ->
-          error "Todo: implement this branch! (it has not been needed yet...)"
-      where
-        -- fill up occupiedReqs, then the unoccupied ones with anything left over...
+    spanReqs = S.take span (S.drop start reqs)
 
-        occupiedReqs :: [(Int, SizeReq)]
-        occupiedReqs =
-          [(p, r) | p <- [start .. start + span - 1], Just r <- [S.lookup p reqs]]
+    missingReqs = span - length spanReqs
 
-        unoccuppiedReqs :: [Int]
-        unoccuppiedReqs =
-          [p | p <- [start .. start + span - 1], Nothing <- [S.lookup p reqs]]
+    remainingReq =
+      foldl' minusSizeReq req spanReqs
+
+    splitRemainingReq =
+      multSizeReq remainingReq (1 / fromIntegral missingReqs)
 
 multSizeReq :: SizeReq -> Double -> SizeReq
 multSizeReq (SizeReq fixed flex extra factor) m =
@@ -269,9 +248,3 @@ minusSizeReq r1 r2 =
       _szrExtra = max 0 (_szrExtra r1 - _szrExtra r2),
       _szrFactor = _szrFactor r1
     }
-
-mergeAt :: Seq SizeReq -> Int -> SizeReq -> Seq SizeReq
-mergeAt reqs i req
-  | S.length reqs == i = reqs |> req
-  | S.length reqs > i = S.adjust' (sizeReqMergeMax req) i reqs
-  | otherwise = error "There is a bug in the JGrid code: this should not happen!"
