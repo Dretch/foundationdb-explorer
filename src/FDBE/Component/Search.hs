@@ -19,7 +19,7 @@ import qualified Data.Text as T
 import Data.Time (NominalDiffTime)
 import qualified Data.UUID as UUID
 import FDBE.Bytes (bytesToText)
-import FDBE.Component.JGrid (JGridCol, JGridRow, colSpan, jcol, jcol_, jgrid, jgrid_, jrow)
+import FDBE.Component.JGrid (JGridCell, JGridRow, colSpan, jcell, jcell_, jgrid, jgrid_, jrow)
 import FDBE.Component.TupleEntry
 import qualified FDBE.Font as Font
 import FDBE.FoundationDB (SearchRange (..), SearchResult (..), getSearchResult, searchFrom, searchLimit, searchReverse, searchTo)
@@ -88,33 +88,33 @@ buildUI _wenv model = searchGrid
       jgrid_
         [childSpacing_ 2]
         [ jrow
-            [ jcol $ label "From",
-              jcol $ tupleEntry (range . searchFrom) -- todo: allow selecting "Start"/"End" tuples?
+            [ jcell $ label "From",
+              jcell $ tupleEntry (range . searchFrom) -- todo: allow selecting "Start"/"End" tuples?
             ],
           jrow
-            [ jcol $ label "To",
-              jcol $ tupleEntry (range . searchTo)
+            [ jcell $ label "To",
+              jcell $ tupleEntry (range . searchTo)
             ],
           jrow
-            [ jcol $ label "Limit",
-              jcol $ numericField_ (range . searchLimit) [minValue 0, wheelRate 10] -- todo: why is minValue ignored?
+            [ jcell $ label "Limit",
+              jcell $ numericField_ (range . searchLimit) [minValue 0, wheelRate 10] -- todo: why is minValue ignored?
             ],
           jrow
-            [ jcol spacer,
-              jcol $ labeledCheckbox_ "Reverse Order" (range . searchReverse) [textRight, childSpacing_ 2]
+            [ jcell spacer,
+              jcell $ labeledCheckbox_ "Reverse Order" (range . searchReverse) [textRight, childSpacing_ 2]
             ],
           jrow
-            [ jcol_ [colSpan 2] $
+            [ jcell_ [colSpan 2] $
                 hstack
                   [ filler,
                     mainButton "Fetch" StartSearch
                   ]
             ],
           jrow
-            [ jcol_ [colSpan 2] resultsGrid
+            [ jcell_ [colSpan 2] resultsGrid
             ],
           jrow
-            [ jcol_ [colSpan 2] $
+            [ jcell_ [colSpan 2] $
                 vstack
                   [ filler,
                     label statusText `styleBasic` [paddingV 2]
@@ -154,44 +154,44 @@ resultRow keyWidth valueWidth bgCol SearchResult {_resultKey, _resultValue} =
   jrow $
     [editCell] <> keyCells <> [eqCell] <> valueCells
   where
-    editCell :: JGridCol s SearchEvent
+    editCell :: JGridCell s SearchEvent
     editCell =
-      jcol $
+      jcell $
         button "Edit" (EditSearchResult (fst _resultKey) (fst _resultValue))
           `styleBasic` [textSize 10, border 0 white]
 
-    eqCell :: JGridCol s e
+    eqCell :: JGridCell s e
     eqCell =
-      jcol $
+      jcell $
         label "=" `styleBasic` [textFont Font.monoBold, padding 4]
 
-    keyCells :: [JGridCol s e]
+    keyCells :: [JGridCell s e]
     keyCells
       | (t, Nothing) <- _resultKey =
           [rawCell keyWidth t]
       | (_, Just ts) <- _resultKey =
           imap (elemCell . tupleHelp) ts <> spacerCells (fromIntegral keyWidth - length ts)
 
-    valueCells :: [JGridCol s e]
+    valueCells :: [JGridCell s e]
     valueCells
       | (t, Nothing) <- _resultValue =
           [rawCell valueWidth t]
       | (_, Just ts) <- _resultValue =
           imap (elemCell . tupleHelp) ts
 
-    rawCell :: Word -> ByteString -> JGridCol s e
+    rawCell :: Word -> ByteString -> JGridCell s e
     rawCell width bytes =
-      jcol_ [colSpan width] $
+      jcell_ [colSpan width] $
         tooltip "Raw bytes (not a tuple)" $
           labelSS $ label (bytesToText bytes)
 
-    elemCell :: Text -> Elem -> JGridCol s e
+    elemCell :: Text -> Elem -> JGridCell s e
     elemCell tooltipPrefix elm =
-      jcol $ elemToWidget labelSS tooltipPrefix elm
+      jcell $ elemToWidget labelSS tooltipPrefix elm
 
-    spacerCells :: Int -> [JGridCol s e]
+    spacerCells :: Int -> [JGridCell s e]
     spacerCells n =
-      L.replicate n (jcol spacer)
+      L.replicate n (jcell spacer)
 
     labelSS :: LabelStyleSetter
     labelSS w = w `styleBasic` [bgColor bgCol, padding 6]

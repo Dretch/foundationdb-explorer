@@ -5,14 +5,14 @@
 module FDBE.Component.JGrid
   ( JGridCfg,
     JGridRow,
-    JGridCol,
-    JGridColCfg,
+    JGridCell,
+    JGridCellCfg,
     colSpan,
     jgrid,
     jgrid_,
     jrow,
-    jcol,
-    jcol_,
+    jcell,
+    jcell_,
   )
 where
 
@@ -55,34 +55,34 @@ instance CmbChildSpacing JGridCfg where
       }
 
 newtype JGridRow s e = JGridRow
-  { jgrCols :: [JGridCol s e]
+  { jgrCells :: [JGridCell s e]
   }
 
-data JGridCol s e = JGridCol
+data JGridCell s e = JGridCell
   { jgrContents :: WidgetNode s e,
-    jgrColCfg :: JGridColCfg
+    jgrCellCfg :: JGridCellCfg
   }
 
-newtype JGridColCfg = JGridColCfg
+newtype JGridCellCfg = JGridCellCfg
   { jgcColSpan :: Maybe Word
   }
 
-instance Default JGridColCfg where
+instance Default JGridCellCfg where
   def =
-    JGridColCfg
+    JGridCellCfg
       { jgcColSpan = Nothing
       }
 
-instance Semigroup JGridColCfg where
+instance Semigroup JGridCellCfg where
   c1 <> c2 =
-    JGridColCfg
+    JGridCellCfg
       { jgcColSpan = jgcColSpan c2 <|> jgcColSpan c1
       }
 
-instance Monoid JGridColCfg where
+instance Monoid JGridCellCfg where
   mempty = def
 
-colSpan :: Word -> JGridColCfg
+colSpan :: Word -> JGridCellCfg
 colSpan x = def {jgcColSpan = Just x}
 
 data JGridPosition = JGridPosition
@@ -92,18 +92,17 @@ data JGridPosition = JGridPosition
   }
   deriving (Eq, Show)
 
-jrow :: [JGridCol s e] -> JGridRow s e
+jrow :: [JGridCell s e] -> JGridRow s e
 jrow = JGridRow
 
--- todo: rename to jcell? (since it represents a single cell, not an entire column)
-jcol :: WidgetNode s e -> JGridCol s e
-jcol = jcol_ []
+jcell :: WidgetNode s e -> JGridCell s e
+jcell = jcell_ []
 
-jcol_ :: [JGridColCfg] -> WidgetNode s e -> JGridCol s e
-jcol_ configs widget =
-  JGridCol
+jcell_ :: [JGridCellCfg] -> WidgetNode s e -> JGridCell s e
+jcell_ configs widget =
+  JGridCell
     { jgrContents = widget,
-      jgrColCfg = mconcat configs
+      jgrCellCfg = mconcat configs
     }
 
 jgrid :: forall s e. [JGridRow s e] -> WidgetNode s e
@@ -114,7 +113,7 @@ jgrid = jgrid_ def
 jgrid_ :: [JGridCfg] -> [JGridRow s e] -> WidgetNode s e
 jgrid_ configs unfilteredRows =
   defaultWidgetNode "FDBE.JGrid" container
-    & L.children .~ S.fromList (jgrContents <$> mconcat (jgrCols <$> rows))
+    & L.children .~ S.fromList (jgrContents <$> mconcat (jgrCells <$> rows))
   where
     container =
       createContainer
@@ -125,10 +124,10 @@ jgrid_ configs unfilteredRows =
           }
 
     config = mconcat configs
-    rows = filter (not . null . jgrCols) unfilteredRows
+    rows = filter (not . null . jgrCells) unfilteredRows
     gridPositions = rowsToGridPositions rows
     nRows = length rows
-    nCols = fromMaybe 0 $ maximumMay (length . jgrCols <$> rows)
+    nCols = fromMaybe 0 $ maximumMay (length . jgrCells <$> rows)
 
     spacing = fromMaybe 0 (jgcChildSpacing config)
     spacingTotalW = spacing * max 0 (fromIntegral nCols - 1)
@@ -189,7 +188,7 @@ rowsToGridPositions rows = mconcat (imap mapRow rows)
   where
     mapRow y (JGridRow row) =
       snd $ foldl' (foldCol y) (0, mempty) row
-    foldCol y (w, cols) (JGridCol _wgt cfg) =
+    foldCol y (w, cols) (JGridCell _wgt cfg) =
       let cSpan = fromIntegral $ fromMaybe 1 (jgcColSpan cfg)
        in (w + cSpan, cols :|> JGridPosition w y cSpan)
 
