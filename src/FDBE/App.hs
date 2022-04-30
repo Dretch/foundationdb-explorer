@@ -63,7 +63,7 @@ buildUI _wenv model = widgetStack
         ]
 
     menuButton text event =
-      button text event `styleBasic` [border 0 def]
+      button text event `styleBasic` [border 0 def, radius 0]
 
     -- todo: why do we get "("Failed match on Composite handleMessage",StatusEvent)" errors after changing from status to editor?
     maybeAlert = case model ^. appAlert of
