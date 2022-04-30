@@ -86,7 +86,7 @@ buildUI _wenv model = searchGrid
   where
     searchGrid =
       jgrid_
-        [childSpacing_ 2]
+        [childSpacing_ 4]
         [ jrow
             [ jcell $ label "From",
               jcell $ tupleEntry (range . searchFrom) -- todo: allow selecting "Start"/"End" tuples?
@@ -101,7 +101,7 @@ buildUI _wenv model = searchGrid
             ],
           jrow
             [ jcell spacer,
-              jcell $ labeledCheckbox_ "Reverse Order" (range . searchReverse) [textRight, childSpacing_ 2]
+              jcell $ labeledCheckbox_ "Reverse Order" (range . searchReverse) [textRight, childSpacing_ 4]
             ],
           jrow
             [ jcell_ [colSpan 2] $
@@ -117,7 +117,7 @@ buildUI _wenv model = searchGrid
             [ jcell_ [colSpan 2] $
                 vstack
                   [ filler,
-                    label statusText `styleBasic` [paddingV 2]
+                    label statusText `styleBasic` [paddingV 4]
                   ]
             ]
         ]
@@ -134,9 +134,10 @@ buildUI _wenv model = searchGrid
       OperationSuccess SearchResults {_srSeq = rows} ->
         let keyWidth = fromMaybe 1 $ maxKeyTupleSize rows
             valueWidth = fromMaybe 1 $ maxValueTupleSize rows
+            stripeOns = False : True : stripeOns
          in scroll $
               jgrid $
-                zipWith (resultRow keyWidth valueWidth) rowBgs (Foldable.toList rows)
+                zipWith (resultRow keyWidth valueWidth) stripeOns (Foldable.toList rows)
 
     statusText = case model ^. results of
       OperationSuccess SearchResults {_srDuration, _srSeq} ->
@@ -149,8 +150,8 @@ buildUI _wenv model = searchGrid
     searchNotInProgress =
       model ^. results /= OperationInProgress
 
-resultRow :: Word -> Word -> Color -> SearchResult -> JGridRow SearchModel SearchEvent
-resultRow keyWidth valueWidth bgCol SearchResult {_resultKey, _resultValue} =
+resultRow :: Word -> Word -> Bool -> SearchResult -> JGridRow SearchModel SearchEvent
+resultRow keyWidth valueWidth stripeOn SearchResult {_resultKey, _resultValue} =
   jrow $
     [editCell] <> keyCells <> [eqCell] <> valueCells
   where
@@ -158,26 +159,26 @@ resultRow keyWidth valueWidth bgCol SearchResult {_resultKey, _resultValue} =
     editCell =
       jcell $
         button "Edit" (EditSearchResult (fst _resultKey) (fst _resultValue))
-          `styleBasic` [textSize 10, border 0 white]
+          `styleBasic` [radius 0]
 
     eqCell :: JGridCell s e
     eqCell =
       jcell $
-        label "=" `styleBasic` [textFont Font.monoBold, padding 4]
+        label "=" `styleBasic` [textFont Font.monoBold, padding 8]
 
     keyCells :: [JGridCell s e]
     keyCells
       | (t, Nothing) <- _resultKey =
-          [rawCell keyWidth t]
+        [rawCell keyWidth t]
       | (_, Just ts) <- _resultKey =
-          imap (elemCell . tupleHelp) ts <> spacerCells (fromIntegral keyWidth - length ts)
+        imap (elemCell . tupleHelp) ts <> spacerCells (fromIntegral keyWidth - length ts)
 
     valueCells :: [JGridCell s e]
     valueCells
       | (t, Nothing) <- _resultValue =
-          [rawCell valueWidth t]
+        [rawCell valueWidth t]
       | (_, Just ts) <- _resultValue =
-          imap (elemCell . tupleHelp) ts
+        imap (elemCell . tupleHelp) ts
 
     rawCell :: Word -> ByteString -> JGridCell s e
     rawCell width bytes =
@@ -194,10 +195,12 @@ resultRow keyWidth valueWidth bgCol SearchResult {_resultKey, _resultValue} =
       L.replicate n (jcell spacer)
 
     labelSS :: LabelStyleSetter
-    labelSS w = w `styleBasic` [bgColor bgCol, padding 6]
-
-rowBgs :: [Color]
-rowBgs = rowBgDark : rowBgLight : rowBgs
+    labelSS w = w'
+      where
+        w' = w `styleBasic` (padding 12 : stripeStyle)
+        stripeStyle
+          | stripeOn = [bgColor (rgbHex "#373737")]
+          | otherwise = []
 
 handleEvent :: ShowEditorEvent ep -> EventHandler SearchModel SearchEvent sp ep
 handleEvent showEditorEvent _wenv _node model = \case
@@ -236,7 +239,7 @@ elemToWidget labelSS tooltipPrefix =
       hstack $
         flip imap es $ \i e ->
           elemToWidget labelSS (tooltipPrefix <> tupleHelp i) e
-            `styleBasic` [border 1 rowTupleBorder, paddingH 6, paddingV 2]
+            `styleBasic` [border 1 rowTupleBorder, paddingH 12, paddingV 4]
   where
     w :: Text -> Text -> WidgetNode s e
     w text tooltipText =
@@ -263,12 +266,6 @@ maxTupleSize rows =
   case S.viewr $ S.sort $ fmap length . snd <$> rows of
     EmptyR -> Nothing
     _ S.:> a -> fromIntegral <$> a
-
-rowBgLight :: Color
-rowBgLight = rgbHex "#fcfcfc"
-
-rowBgDark :: Color
-rowBgDark = rgbHex "#f3f6f6"
 
 rowTupleBorder :: Color
 rowTupleBorder = rgbHex "#e5e5e5"

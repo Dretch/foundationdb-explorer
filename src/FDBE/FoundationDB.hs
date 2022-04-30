@@ -90,7 +90,7 @@ toEditableElem = \case
     Bytes bs
   LT.Text t
     | T.any (\c -> c == '\n' || c == '\r') t ->
-        MultiLineText t
+      MultiLineText t
   LT.Text t ->
     SingleLineText t
   LT.Int i ->

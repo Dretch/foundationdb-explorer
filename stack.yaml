@@ -42,7 +42,7 @@ packages:
 extra-deps:
 - nanovg-0.8.0.0
 - git: "https://github.com/fjvallarino/monomer"
-  commit: "e49a79357653f171efe4a2e93a273ac9504d029f"
+  commit: "f693af605997227f692c1d796dfba3ade7d5ad4f"
 - git: "https://github.com/crclark/foundationdb-haskell"
   commit: "15ab9678457ebd6986e31217213bcb2748d06134"
 

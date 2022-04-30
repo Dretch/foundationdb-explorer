@@ -17,7 +17,7 @@ import qualified FDBE.Component.KeyEditor as KeyEditor
 import FDBE.Component.Search (search)
 import FDBE.Component.Status (status)
 import qualified FDBE.Font as Font
-import FDBE.Monomer (adwaitaTheme, sizeReqUpdaterFlexMax)
+import FDBE.Monomer (sizeReqUpdaterFlexMax)
 import FDBE.Prelude
 import FoundationDB (Database)
 import Monomer
@@ -52,11 +52,11 @@ buildUI _wenv model = widgetStack
             [sizeReqUpdaterFlexMax]
             [ search (model ^. database) ShowKeyEditorAlert,
               hgrid_
-                [childSpacing_ 2]
+                [childSpacing_ 4]
                 [ menuButton "Database Status" ShowStatusAlert,
                   menuButton "Edit Value at Key" ShowEmptyKeyEditorAlert
                 ]
-                `styleBasic` [padding 2]
+                `styleBasic` [padding 4]
             ]
             `nodeKey` "vstack", -- key needed to avoid recreating this vstack when opening the alert
           maybeAlert
@@ -93,7 +93,8 @@ start db = startApp model handleEvent buildUI config
     config =
       [ appWindowTitle "FoundationDB Explorer",
         appWindowIcon "./assets/icon.bmp",
-        appTheme adwaitaTheme
+        appTheme darkTheme,
+        appDisableAutoScale True
       ]
         <> Font.fontDefs
     model =

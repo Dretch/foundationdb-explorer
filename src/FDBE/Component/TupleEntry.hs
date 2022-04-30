@@ -56,9 +56,9 @@ buildUI readonly _wenv model = tree
   where
     tree =
       hstack_
-        [childSpacing_ 2]
+        [childSpacing_ 4]
         [ textDropdownSV (getEditAs model) (TupleValueChanged . setEditAs model) [EditAsRaw, EditAsTuple]
-            `styleBasic` [sizeReqW (fixedSize 60)]
+            `styleBasic` [sizeReqW (fixedSize 100)]
             `nodeEnabled` not readonly,
           editor
         ]
@@ -78,7 +78,7 @@ tupleEntry' ::
   Bool ->
   WidgetNode s e
 tupleEntry' elems elmsChange readonly =
-  vstack_ [childSpacing_ 2] $
+  vstack_ [childSpacing_ 4] $
     imap elemEntry elems <> [addElemButton]
   where
     elemEntry :: Int -> EditableElem -> WidgetNode s e
@@ -86,7 +86,7 @@ tupleEntry' elems elmsChange readonly =
       where
         elemTree =
           hstack_
-            [childSpacing_ 2]
+            [childSpacing_ 4]
             [ elemTypeCombo,
               elemInput,
               removeElemButton
@@ -94,7 +94,7 @@ tupleEntry' elems elmsChange readonly =
 
         elemTypeCombo =
           textDropdownSV (getElemType elm) (\et -> elmsChange (setAt i (setElemType elm et) elems)) (enumFrom None')
-            `styleBasic` [sizeReqW (fixedSize 100)]
+            `styleBasic` [sizeReqW (fixedSize 160)]
             `nodeEnabled` not readonly
 
         elemInput = case elm of
@@ -152,7 +152,7 @@ tupleEntry' elems elmsChange readonly =
         completeVSInput :: Versionstamp 'Complete -> WidgetNode s e
         completeVSInput (CompleteVersionstamp (TransactionVersionstamp tx batch) usr) =
           hstack_
-            [childSpacing_ 2]
+            [childSpacing_ 4]
             [ label "Tx:",
               numericFieldV_ tx (onElemChange . CompleteVS . flip CompleteVersionstamp usr . flip TransactionVersionstamp batch) numericFieldCfg,
               label "Batch:",
@@ -264,12 +264,12 @@ setElemType elm = \case
       _ -> Bytes ""
   SingleLineText'
     | Just t <- elemText elm ->
-        SingleLineText t
+      SingleLineText t
   SingleLineText' ->
     SingleLineText ""
   MultiLineText'
     | Just t <- elemText elm ->
-        MultiLineText t
+      MultiLineText t
   MultiLineText' ->
     MultiLineText ""
   Int' ->

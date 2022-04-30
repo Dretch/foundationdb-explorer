@@ -142,10 +142,10 @@ titleBox :: Text -> [WidgetNode KeyEditorModel KeyEditorEvent] -> WidgetNode Key
 titleBox titleText contents = tree
   where
     tree =
-      box_ [alignLeft] (vstack_ [childSpacing_ 2] (title : contents))
-        `styleBasic` [border 1 (rgbHex "#c9c6c2"), padding 4, radius 3]
+      box_ [alignLeft] (vstack_ [childSpacing_ 4] (title : contents))
+        `styleBasic` [border 1 (rgbHex "#c9c6c2"), padding 8, radius 3]
     title =
-      label titleText `styleBasic` [textFont Font.bold, paddingV 4]
+      label titleText `styleBasic` [textFont Font.bold, paddingV 8]
 
 existsCombo ::
   ValueExistsOrNot ->

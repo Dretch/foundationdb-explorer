@@ -8,6 +8,7 @@ module FDBE.Component.Status (status) where
 
 import Control.Concurrent (threadDelay)
 import Control.Lens
+import qualified FDBE.Font as Font
 import FDBE.FoundationDB (getStatus)
 import FDBE.Monomer (sizeReqUpdaterFlexMax, useOldCompositeModel)
 import FDBE.Prelude
@@ -33,7 +34,7 @@ buildUI _wenv model = tree
       box_ [sizeReqUpdaterFlexMax] $
         scroll $
           label_ (model ^. statusText) [multiline]
-            `styleBasic` [padding 4, textFont "Mono"]
+            `styleBasic` [padding 8, textFont Font.mono]
 
 handleEvent :: EventHandler StatusModel StatusEvent sp ep
 handleEvent _wenv _node model = \case

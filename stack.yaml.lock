@@ -16,12 +16,12 @@ packages:
     version: 1.3.0.0
     git: https://github.com/fjvallarino/monomer
     pantry-tree:
-      size: 17322
-      sha256: 9aeb85282e9923f6535758481dbbbb4d290cd4b54b91b0e515626dcc9f1754ca
-    commit: e49a79357653f171efe4a2e93a273ac9504d029f
+      size: 17325
+      sha256: 43916459ad1fa907837e5b67ebcf8e83d2a0f13eadf4b734f89eb6fa65d32fe3
+    commit: f693af605997227f692c1d796dfba3ade7d5ad4f
   original:
     git: https://github.com/fjvallarino/monomer
-    commit: e49a79357653f171efe4a2e93a273ac9504d029f
+    commit: f693af605997227f692c1d796dfba3ade7d5ad4f
 - completed:
     name: foundationdb-haskell
     version: 0.1.0.0
