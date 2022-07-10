@@ -184,7 +184,8 @@ resultRow keyWidth valueWidth stripeOn SearchResult {_resultKey, _resultValue} =
     rawCell width bytes =
       jcell_ [colSpan width] $
         tooltip "Raw bytes (not a tuple)" $
-          labelSS $ label (bytesToText bytes)
+          labelSS $
+            label (bytesToText bytes)
 
     elemCell :: Text -> Elem -> JGridCell s e
     elemCell tooltipPrefix elm =
@@ -244,7 +245,8 @@ elemToWidget labelSS tooltipPrefix =
     w :: Text -> Text -> WidgetNode s e
     w text tooltipText =
       tooltip (tooltipPrefix <> tooltipText) $
-        labelSS $ label text
+        labelSS $
+          label text
 
     trimWithEllipsis :: Text -> Text
     trimWithEllipsis t =

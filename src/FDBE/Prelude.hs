@@ -1,7 +1,7 @@
 module FDBE.Prelude
   ( module X,
     identity,
-    uncurry4
+    uncurry4,
   )
 where
 
