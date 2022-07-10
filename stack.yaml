@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-18.19
+resolver: lts-19.15
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,11 +40,10 @@ packages:
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- nanovg-0.8.0.0
 - git: "https://github.com/fjvallarino/monomer"
-  commit: "f693af605997227f692c1d796dfba3ade7d5ad4f"
+  commit: "dc3b889ad08852a66e1346f3ecfa11ba5f402871"
 - git: "https://github.com/crclark/foundationdb-haskell"
-  commit: "15ab9678457ebd6986e31217213bcb2748d06134"
+  commit: "537142f7ba46da9ebd5a7747eef54640e134284d"
 
 # Override default flag values for local packages and extra-deps
 flags:

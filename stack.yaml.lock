@@ -5,37 +5,30 @@
 
 packages:
 - completed:
-    hackage: nanovg-0.8.0.0@sha256:aa8d2864d17daae3ba8c834ea523d805b8a68414e9ba1df00b102b89348ec954,4914
-    pantry-tree:
-      size: 2558
-      sha256: f179e5e90a4f58c23bc989979721b1246836e7db0213fb8d7aa5dc3b7d1de791
-  original:
-    hackage: nanovg-0.8.0.0
-- completed:
     name: monomer
-    version: 1.3.0.0
+    version: 1.4.0.0
     git: https://github.com/fjvallarino/monomer
     pantry-tree:
       size: 17325
-      sha256: 43916459ad1fa907837e5b67ebcf8e83d2a0f13eadf4b734f89eb6fa65d32fe3
-    commit: f693af605997227f692c1d796dfba3ade7d5ad4f
+      sha256: 227051e16be59b0b5b241aae1898299cc5e864be6cfb52b7f08b26d0cb3f2430
+    commit: dc3b889ad08852a66e1346f3ecfa11ba5f402871
   original:
     git: https://github.com/fjvallarino/monomer
-    commit: f693af605997227f692c1d796dfba3ade7d5ad4f
+    commit: dc3b889ad08852a66e1346f3ecfa11ba5f402871
 - completed:
     name: foundationdb-haskell
     version: 0.1.0.0
     git: https://github.com/crclark/foundationdb-haskell
     pantry-tree:
       size: 9030
-      sha256: ef3f776543310467bc85a35fb6dc57ebbedae9333c9a4257598ba0aa26e30be4
-    commit: 15ab9678457ebd6986e31217213bcb2748d06134
+      sha256: 2eb51b1a7faa99b2387f17f0642db2fc28380454ac5f54647d3f347bd6fe3882
+    commit: 537142f7ba46da9ebd5a7747eef54640e134284d
   original:
     git: https://github.com/crclark/foundationdb-haskell
-    commit: 15ab9678457ebd6986e31217213bcb2748d06134
+    commit: 537142f7ba46da9ebd5a7747eef54640e134284d
 snapshots:
 - completed:
-    size: 586103
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/18/19.yaml
-    sha256: 32716534fff554b7f90762130fdb985cabf29f157758934dd1c8f3892a646430
-  original: lts-18.19
+    size: 618952
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/19/15.yaml
+    sha256: 82e5ccb47b068521de4055034e8aa278eab430b586881d9cc29ba8b382ce3253
+  original: lts-19.15

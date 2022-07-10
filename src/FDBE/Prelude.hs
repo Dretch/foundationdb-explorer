@@ -1,6 +1,7 @@
 module FDBE.Prelude
   ( module X,
     identity,
+    uncurry4
   )
 where
 
@@ -32,8 +33,10 @@ import Debug.Trace as X (trace)
 import GHC.Generics as X (Generic)
 import Text.Printf as X (printf)
 import TextShow as X
-import Util as X (uncurry4)
 import Prelude as X hiding (id)
 
 identity :: a -> a
 identity x = x
+
+uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
+uncurry4 f (a, b, c, d) = f a b c d

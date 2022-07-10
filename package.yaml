@@ -29,7 +29,6 @@ dependencies:
 - text-show
 - time
 - unordered-containers
-- util
 - uuid
 - vector
 
