@@ -1,4 +1,4 @@
-FROM fpco/stack-build:lts-18.19
+FROM fpco/stack-build:lts-20.10
 
 # for nanovg / monomer
 RUN apt-get update && apt-get install --assume-yes libsdl2-dev libglew-dev
