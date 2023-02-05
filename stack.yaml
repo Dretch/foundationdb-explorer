@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-19.15
+resolver: lts-20.10
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,8 +40,8 @@ packages:
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- git: "https://github.com/fjvallarino/monomer"
-  commit: "dc3b889ad08852a66e1346f3ecfa11ba5f402871"
+- monomer-1.5.1.0
+- monomer-hagrid-0.2.1.0
 - git: "https://github.com/crclark/foundationdb-haskell"
   commit: "537142f7ba46da9ebd5a7747eef54640e134284d"
 

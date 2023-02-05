@@ -5,30 +5,33 @@
 
 packages:
 - completed:
-    name: monomer
-    version: 1.4.0.0
-    git: https://github.com/fjvallarino/monomer
+    hackage: monomer-1.5.1.0@sha256:18e3ce60c7f5d3fae74bf5ace7515f0e252b12ccc4b71030f948e6fdc1f49a99,16741
     pantry-tree:
-      size: 17325
-      sha256: 227051e16be59b0b5b241aae1898299cc5e864be6cfb52b7f08b26d0cb3f2430
-    commit: dc3b889ad08852a66e1346f3ecfa11ba5f402871
+      sha256: 3dde2b635d1298c3b734c0b28bae8fa4956bc2ad9ef89f81bbb04ec1eeb09d0c
+      size: 14513
   original:
-    git: https://github.com/fjvallarino/monomer
-    commit: dc3b889ad08852a66e1346f3ecfa11ba5f402871
+    hackage: monomer-1.5.1.0
 - completed:
-    name: foundationdb-haskell
-    version: 0.1.0.0
-    git: https://github.com/crclark/foundationdb-haskell
+    hackage: monomer-hagrid-0.2.1.0@sha256:809393e5fa95a5dde93628aca8d28364fbae1f89b6c71595451ee61de927f575,4682
     pantry-tree:
-      size: 9030
-      sha256: 2eb51b1a7faa99b2387f17f0642db2fc28380454ac5f54647d3f347bd6fe3882
-    commit: 537142f7ba46da9ebd5a7747eef54640e134284d
+      sha256: 38cdad8df130e2c010593483e38c4360886ff86b6496c3499066ceb24f4cd81e
+      size: 658
   original:
-    git: https://github.com/crclark/foundationdb-haskell
+    hackage: monomer-hagrid-0.2.1.0
+- completed:
     commit: 537142f7ba46da9ebd5a7747eef54640e134284d
+    git: https://github.com/crclark/foundationdb-haskell
+    name: foundationdb-haskell
+    pantry-tree:
+      sha256: 2eb51b1a7faa99b2387f17f0642db2fc28380454ac5f54647d3f347bd6fe3882
+      size: 9030
+    version: 0.1.0.0
+  original:
+    commit: 537142f7ba46da9ebd5a7747eef54640e134284d
+    git: https://github.com/crclark/foundationdb-haskell
 snapshots:
 - completed:
-    size: 618952
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/19/15.yaml
-    sha256: 82e5ccb47b068521de4055034e8aa278eab430b586881d9cc29ba8b382ce3253
-  original: lts-19.15
+    sha256: 17870c63f8041ac17a38096124abeb953cb14d84bfc96deb88f9b24daa97b347
+    size: 649332
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/10.yaml
+  original: lts-20.10
