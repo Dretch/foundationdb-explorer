@@ -5,21 +5,21 @@ on: [push]
 jobs:
   check-formatting:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       
     - uses: mrkkrp/ormolu-action@v9
 
   build:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - uses: mstksg/setup-stack@v2
       env:
@@ -28,12 +28,12 @@ jobs:
 
     - run: docker build docker -t foundationdb-explorer:latest
     
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       with:
         key: stack
         path: ~/.stack
     
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       with:
         key: stack-work
         path: .stack-work
